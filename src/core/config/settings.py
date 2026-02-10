@@ -1,9 +1,8 @@
 """Application settings and configuration."""
 
 from functools import lru_cache
-from typing import List
 
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +14,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,
     )
 
     # Application
@@ -111,25 +111,31 @@ class Settings(BaseSettings):
         description="Frontend application URL for email links",
     )
 
-    # CORS
-    cors_origins: List[str] = Field(
-        default=["http://localhost:3000"], description="Allowed CORS origins"
+    # CORS - stored as string to avoid pydantic-settings env parsing issues
+    cors_origins_str: str = Field(
+        default="http://localhost:3000",
+        alias="CORS_ORIGINS",
+        description="Allowed CORS origins (comma-separated or JSON array)",
     )
 
     # Logging
     log_level: str = Field(default="INFO", description="Logging level")
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        if isinstance(v, str):
-            import json
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parse CORS origins from string to list."""
+        import json
 
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:
-                return [origin.strip() for origin in v.split(",")]
-        return v
+        raw = self.cors_origins_str
+        # Try JSON array first: ["http://...", "http://..."]
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [str(o) for o in parsed]
+        except (json.JSONDecodeError, TypeError):
+            pass
+        # Fall back to comma-separated: http://...,http://...
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
     @property
     def is_development(self) -> bool:
