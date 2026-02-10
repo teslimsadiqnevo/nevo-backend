@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.application.common.unit_of_work import IUnitOfWork
 from src.application.features.students.queries import GetStudentProfileQuery
+from src.application.features.students.commands import SetPinCommand
 from src.application.features.progress.queries import GetStudentProgressQuery
+from src.application.features.auth.dtos import SetPinInput
 from src.core.config.constants import UserRole
-from src.core.exceptions import EntityNotFoundError
+from src.core.exceptions import EntityNotFoundError, ValidationError
 from src.presentation.api.v1.dependencies import (
     get_current_active_user,
     get_uow,
@@ -19,18 +21,41 @@ from src.presentation.schemas.student import (
     StudentProfileResponse,
     StudentProgressResponse,
 )
+from src.presentation.schemas.auth import SetPinRequest, SetPinResponse
 
 router = APIRouter()
 
 
-@router.get("/me/profile", response_model=StudentProfileResponse)
+@router.get(
+    "/me/profile",
+    response_model=StudentProfileResponse,
+    summary="Get my learning profile",
+    description="""
+Get the current student's AI-generated NeuroProfile.
+
+**Requires:** Student role.
+
+**Returns:** The student's personalized learning profile including:
+- Learning style (visual, auditory, kinesthetic, etc.)
+- Reading level
+- Complexity tolerance
+- Estimated attention span in minutes
+- Sensory triggers to avoid
+- Interest areas
+- Profile version and last update time
+
+**Prerequisite:** Student must have completed the onboarding assessment.
+    """,
+    responses={
+        200: {"description": "Student's NeuroProfile"},
+        404: {"description": "Profile not found — student hasn't completed assessment"},
+    },
+)
 async def get_my_profile(
     current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Get current student's learning profile.
-    """
+    """Get current student's learning profile."""
     try:
         query = GetStudentProfileQuery(uow)
         result = await query.execute(current_user.id)
@@ -55,14 +80,32 @@ async def get_my_profile(
         )
 
 
-@router.get("/me/progress", response_model=StudentProgressResponse)
+@router.get(
+    "/me/progress",
+    response_model=StudentProgressResponse,
+    summary="Get my learning progress",
+    description="""
+Get the current student's overall learning progress and statistics.
+
+**Requires:** Student role.
+
+**Returns:**
+- Total lessons completed and time spent
+- Average score across all lessons
+- Current and longest learning streaks
+- Per-lesson progress breakdown (status, percentage, score)
+- Skill mastery levels
+    """,
+    responses={
+        200: {"description": "Student's progress summary with lesson and skill details"},
+        404: {"description": "Progress not found"},
+    },
+)
 async def get_my_progress(
     current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Get current student's learning progress.
-    """
+    """Get current student's learning progress."""
     try:
         query = GetStudentProgressQuery(uow)
         result = await query.execute(current_user.id)
@@ -103,16 +146,87 @@ async def get_my_progress(
         )
 
 
-@router.get("/{student_id}/profile", response_model=StudentProfileResponse)
+@router.post(
+    "/me/pin",
+    response_model=SetPinResponse,
+    summary="Set or update my PIN",
+    description="""
+Set or update the student's 4-digit PIN for Nevo ID login.
+
+**Requires:** Student role.
+
+**Prerequisites:**
+- Student must have completed their assessment (Nevo ID auto-generated)
+
+**PIN Requirements:**
+- Exactly 4 digits (0-9)
+- Setting a new PIN overwrites the previous one
+
+**After setting PIN:**
+Student can login using `POST /auth/login/nevo-id` with their Nevo ID + PIN.
+    """,
+    responses={
+        200: {"description": "PIN set successfully, returns Nevo ID"},
+        400: {"description": "Invalid PIN format or no Nevo ID (assessment not completed)"},
+        404: {"description": "User not found"},
+    },
+)
+async def set_my_pin(
+    request: SetPinRequest,
+    current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Set or update student's 4-digit PIN (students only)."""
+    try:
+        command = SetPinCommand(uow)
+        result = await command.execute(
+            SetPinInput(user_id=current_user.id, pin=request.pin)
+        )
+
+        return SetPinResponse(
+            success=result.success,
+            message=result.message,
+            nevo_id=result.nevo_id,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.get(
+    "/{student_id}/profile",
+    response_model=StudentProfileResponse,
+    summary="Get a student's learning profile",
+    description="""
+View a specific student's NeuroProfile.
+
+**Requires:** Teacher, School Admin, or Parent role.
+
+**Use cases:**
+- Teachers reviewing a student's learning preferences before class
+- Parents monitoring their child's profile
+- School admins auditing student assessments
+    """,
+    responses={
+        200: {"description": "Student's NeuroProfile"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Student or profile not found"},
+    },
+)
 async def get_student_profile(
     student_id: UUID,
     current_user: CurrentUser = Depends(require_role([UserRole.TEACHER, UserRole.SCHOOL_ADMIN, UserRole.PARENT])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Get a student's learning profile (for teachers/parents).
-    """
-    # TODO: Add authorization check for parent access
+    """Get a student's learning profile (teachers/parents/admins)."""
     try:
         query = GetStudentProfileQuery(uow)
         result = await query.execute(student_id)
@@ -137,15 +251,30 @@ async def get_student_profile(
         )
 
 
-@router.get("/{student_id}/progress", response_model=StudentProgressResponse)
+@router.get(
+    "/{student_id}/progress",
+    response_model=StudentProgressResponse,
+    summary="Get a student's learning progress",
+    description="""
+View a specific student's learning progress and statistics.
+
+**Requires:** Teacher, School Admin, or Parent role.
+
+**Returns:** Same data as `/me/progress` but for a specific student.
+Useful for teachers tracking student engagement and parents monitoring progress.
+    """,
+    responses={
+        200: {"description": "Student's progress summary"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "Student or progress not found"},
+    },
+)
 async def get_student_progress(
     student_id: UUID,
     current_user: CurrentUser = Depends(require_role([UserRole.TEACHER, UserRole.SCHOOL_ADMIN, UserRole.PARENT])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Get a student's learning progress (for teachers/parents).
-    """
+    """Get a student's learning progress (teachers/parents/admins)."""
     try:
         query = GetStudentProgressQuery(uow)
         result = await query.execute(student_id)

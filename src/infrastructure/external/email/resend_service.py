@@ -1,23 +1,21 @@
-"""SMTP email service implementation."""
+"""Resend email service implementation."""
 
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import Optional
+
+import resend
 
 from src.core.config.settings import settings
 from src.core.exceptions import ExternalServiceError
 from src.domain.interfaces.services import IEmailService
 
 
-class SMTPEmailService(IEmailService):
-    """Email service implementation using SMTP."""
+class ResendEmailService(IEmailService):
+    """Email service implementation using Resend SDK."""
 
     def __init__(self):
-        self.host = settings.smtp_host
-        self.port = settings.smtp_port
-        self.user = settings.smtp_user
-        self.password = settings.smtp_password
+        if not settings.resend_api_key:
+            raise ValueError("RESEND_API_KEY is required")
+        resend.api_key = settings.resend_api_key
         self.from_email = settings.email_from
 
     async def send_email(
@@ -27,33 +25,23 @@ class SMTPEmailService(IEmailService):
         body: str,
         html_body: Optional[str] = None,
     ) -> bool:
-        """Send an email."""
+        """Send an email using Resend."""
         try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            msg["From"] = self.from_email
-            msg["To"] = to
-
-            # Attach plain text
-            msg.attach(MIMEText(body, "plain"))
-
-            # Attach HTML if provided
-            if html_body:
-                msg.attach(MIMEText(html_body, "html"))
-
-            # Send email
-            with smtplib.SMTP(self.host, self.port) as server:
-                server.starttls()
-                server.login(self.user, self.password)
-                server.send_message(msg)
-
+            params = resend.Emails.SendParams(
+                from_=self.from_email,
+                to=[to],
+                subject=subject,
+                text=body,
+                html=html_body if html_body else None,
+            )
+            resend.Emails.send(params)
             return True
 
         except Exception as e:
             raise ExternalServiceError(
-                service_name="Email",
+                service_name="Resend Email",
                 message=f"Failed to send email: {str(e)}",
-            )
+            ) from e
 
     async def send_welcome_email(self, to: str, name: str) -> bool:
         """Send welcome email to new user."""
@@ -106,7 +94,19 @@ If you didn't request this, please ignore this email.
 Best regards,
 The Nevo Team
         """
-        return await self.send_email(to, subject, body)
+        html_body = f"""
+<html>
+<body>
+<h2>Reset Your Nevo Password</h2>
+<p>You requested to reset your Nevo password.</p>
+<p><a href="{reset_link}">Click here to reset your password</a></p>
+<p>This link will expire in 1 hour.</p>
+<p>If you didn't request this, please ignore this email.</p>
+<p>Best regards,<br>The Nevo Team</p>
+</body>
+</html>
+        """
+        return await self.send_email(to, subject, body, html_body)
 
     async def send_verification_email(
         self,
@@ -128,4 +128,15 @@ This link will expire in 24 hours.
 Best regards,
 The Nevo Team
         """
-        return await self.send_email(to, subject, body)
+        html_body = f"""
+<html>
+<body>
+<h2>Verify Your Nevo Email</h2>
+<p>Please verify your email address to complete your Nevo registration.</p>
+<p><a href="{verify_link}">Click here to verify your email</a></p>
+<p>This link will expire in 24 hours.</p>
+<p>Best regards,<br>The Nevo Team</p>
+</body>
+</html>
+        """
+        return await self.send_email(to, subject, body, html_body)

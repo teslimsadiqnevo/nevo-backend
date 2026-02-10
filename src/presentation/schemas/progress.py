@@ -57,26 +57,15 @@ class UpdateProgressResponse(BaseModel):
         json_schema_extra={
             "example": {
                 "status": "updated",
-                "progress": {
-                    "lesson_id": "550e8400-e29b-41d4-a716-446655440003",
-                    "blocks_completed": 4,
-                    "total_blocks": 6,
-                    "time_spent_seconds": 480,
-                    "quiz_score": 85.5,
-                    "is_completed": False,
-                    "completion_percentage": 66.7
-                },
-                "streak": {
-                    "current_streak": 5,
-                    "longest_streak": 12
-                }
+                "lesson_id": "550e8400-e29b-41d4-a716-446655440003",
+                "is_completed": False,
             }
         }
     )
 
-    status: str = Field(..., description="Status: updated or created")
-    progress: dict = Field(..., description="Current progress details for the lesson")
-    streak: dict = Field(..., description="Student's learning streak information")
+    status: str = Field(..., description="Status: 'updated'")
+    lesson_id: str = Field(..., description="UUID of the lesson whose progress was updated")
+    is_completed: bool = Field(..., description="Whether the lesson is now marked as completed")
 
 
 class StudentProgressSummary(BaseModel):

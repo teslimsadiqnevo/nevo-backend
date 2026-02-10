@@ -7,7 +7,12 @@ from src.presentation.api.v1.dependencies.auth import (
     require_role,
 )
 from src.presentation.api.v1.dependencies.database import get_uow
-from src.presentation.api.v1.dependencies.services import get_ai_service, get_storage_service
+from src.presentation.api.v1.dependencies.services import (
+    get_ai_service,
+    get_cache_service,
+    get_email_service,
+    get_storage_service,
+)
 
 __all__ = [
     "CurrentUser",
@@ -17,4 +22,6 @@ __all__ = [
     "get_uow",
     "get_ai_service",
     "get_storage_service",
+    "get_cache_service",
+    "get_email_service",
 ]

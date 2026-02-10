@@ -296,3 +296,21 @@ class SubmitFeedbackRequest(BaseModel):
         description="Type of correction: content, complexity, accuracy, formatting"
     )
     notes: Optional[str] = Field(None, description="Optional notes explaining the correction")
+
+
+class SubmitFeedbackResponse(BaseModel):
+    """Submit feedback response schema."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "status": "feedback_recorded",
+                "message": "Feedback recorded for AI training",
+                "training_log_id": "550e8400-e29b-41d4-a716-446655440006",
+            }
+        }
+    )
+
+    status: str = Field(..., description="Status: 'feedback_recorded'")
+    message: str = Field(..., description="Confirmation message")
+    training_log_id: str = Field(..., description="UUID of the created training data log")

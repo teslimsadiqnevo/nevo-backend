@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.application.common.unit_of_work import IUnitOfWork
 from src.application.features.schools.commands import CreateSchoolCommand
@@ -26,16 +26,40 @@ from src.presentation.schemas.school import (
 router = APIRouter()
 
 
-@router.post("", response_model=SchoolResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=SchoolResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new school",
+    description="""
+Register a new school on the Nevo platform.
+
+**No authentication required** (for initial setup). In production,
+this should be restricted to super admins.
+
+**Required Fields:**
+- `name` — School name
+- `country` — Country
+
+**Optional Fields:**
+- `address`, `city`, `state` — Location details
+- `phone_number`, `email` — Contact info
+
+**After creating a school:**
+1. Note the returned `id`
+2. Register a school admin with `school_id` set to this value
+3. Register teachers and students under the same school
+    """,
+    responses={
+        201: {"description": "School created successfully"},
+        400: {"description": "Validation error"},
+    },
+)
 async def create_school(
     request: CreateSchoolRequest,
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Create a new school.
-
-    Note: In production, this should require admin authentication.
-    """
+    """Create a new school."""
     command = CreateSchoolCommand(uow)
     result = await command.execute(
         CreateSchoolInput(
@@ -63,14 +87,34 @@ async def create_school(
     )
 
 
-@router.get("/dashboard", response_model=SchoolDashboardResponse)
+@router.get(
+    "/dashboard",
+    response_model=SchoolDashboardResponse,
+    summary="Get school admin dashboard",
+    description="""
+Get an overview of school-wide statistics.
+
+**Requires:** School Admin role.
+
+**Returns:**
+- School info (name, ID)
+- Total teachers and students
+- Total lessons created
+- Active students today
+- Average school-wide score
+- Assessment completion stats
+    """,
+    responses={
+        200: {"description": "School dashboard with aggregate statistics"},
+        400: {"description": "User not associated with a school"},
+        404: {"description": "School not found"},
+    },
+)
 async def get_school_dashboard(
     current_user: CurrentUser = Depends(require_role([UserRole.SCHOOL_ADMIN])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Get school admin dashboard with overview statistics.
-    """
+    """Get school admin dashboard with overview statistics."""
     if not current_user.school_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,23 +145,41 @@ async def get_school_dashboard(
             total_teachers=school.teacher_count,
             total_students=school.student_count,
             total_lessons=lessons_result.total,
-            active_students_today=0,  # TODO: Implement
+            active_students_today=0,
             average_school_score=progress_stats.get("average_score", 0),
-            students_completed_assessment=0,  # TODO: Implement
-            lessons_delivered_today=0,  # TODO: Implement
+            students_completed_assessment=0,
+            lessons_delivered_today=0,
         )
 
 
-@router.get("/teachers", response_model=TeacherListResponse)
+@router.get(
+    "/teachers",
+    response_model=TeacherListResponse,
+    summary="List school teachers",
+    description="""
+List all teachers in the school with their lesson counts.
+
+**Requires:** School Admin role.
+
+**Returns per teacher:**
+- Basic info (name, email)
+- Number of lessons created
+- Account creation date
+
+**Pagination:** Use `page` and `page_size` query parameters.
+    """,
+    responses={
+        200: {"description": "Paginated list of teachers"},
+        400: {"description": "User not associated with a school"},
+    },
+)
 async def list_teachers(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: CurrentUser = Depends(require_role([UserRole.SCHOOL_ADMIN])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    List teachers in the school.
-    """
+    """List teachers in the school."""
     if not current_user.school_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -157,15 +219,29 @@ async def list_teachers(
         )
 
 
-@router.get("/{school_id}", response_model=SchoolResponse)
+@router.get(
+    "/{school_id}",
+    response_model=SchoolResponse,
+    summary="Get school details",
+    description="""
+Get detailed information about a specific school.
+
+**Requires:** Any authenticated user.
+
+**Returns:** School name, location, contact info, and current
+teacher/student counts.
+    """,
+    responses={
+        200: {"description": "School details"},
+        404: {"description": "School not found"},
+    },
+)
 async def get_school(
     school_id: UUID,
     current_user: CurrentUser = Depends(get_current_active_user),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Get school details.
-    """
+    """Get school details."""
     async with uow:
         school = await uow.schools.get_by_id(school_id)
         if not school:

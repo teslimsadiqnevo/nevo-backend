@@ -1,6 +1,6 @@
 """User database model."""
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import relationship
 
@@ -18,6 +18,7 @@ class UserModel(BaseModel):
     role = Column(Enum(UserRole), nullable=False, index=True)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
+    age = Column(Integer, nullable=True)
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
@@ -26,7 +27,12 @@ class UserModel(BaseModel):
     last_login_at = Column(DateTime, nullable=True)
 
     # For parents - linked student IDs stored as array
-    linked_student_ids = Column(ARRAY(UUID(as_uuid=True)), default=[], nullable=True)
+    linked_student_ids = Column(ARRAY(UUID(as_uuid=True)), default=list, nullable=True)
+
+    # Nevo ID for tablet-friendly student login
+    nevo_id = Column(String(10), unique=True, nullable=True, index=True)
+    # Bcrypt hash of 4-digit PIN
+    pin_hash = Column(String(255), nullable=True)
 
     # Relationships
     school = relationship("SchoolModel", back_populates="users")

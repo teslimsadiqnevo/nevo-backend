@@ -15,8 +15,8 @@ class TrainingDataLogModel(BaseModel):
     source_type = Column(String(50), nullable=False, index=True)
 
     # AI interaction data
-    input_context = Column(JSON, default={}, nullable=False)
-    model_output = Column(JSON, default={}, nullable=False)
+    input_context = Column(JSON, default=dict, nullable=False)
+    model_output = Column(JSON, default=dict, nullable=False)
     human_correction = Column(JSON, nullable=True)
 
     # Model information

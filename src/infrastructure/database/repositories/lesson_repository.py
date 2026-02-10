@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.core.config.constants import LessonStatus
 from src.domain.entities.lesson import Lesson
@@ -106,9 +107,12 @@ class LessonRepository(BaseRepository[LessonModel, Lesson], ILessonRepository):
         pagination: Optional[PaginationParams] = None,
     ) -> PaginatedResult[Lesson]:
         """List lessons by teacher."""
-        query = select(LessonModel).where(
-            LessonModel.teacher_id == teacher_id
-        ).order_by(LessonModel.created_at.desc())
+        query = (
+            select(LessonModel)
+            .options(selectinload(LessonModel.teacher), selectinload(LessonModel.school))
+            .where(LessonModel.teacher_id == teacher_id)
+            .order_by(LessonModel.created_at.desc())
+        )
 
         items, total = await self._paginate(query, pagination)
 
@@ -125,9 +129,12 @@ class LessonRepository(BaseRepository[LessonModel, Lesson], ILessonRepository):
         pagination: Optional[PaginationParams] = None,
     ) -> PaginatedResult[Lesson]:
         """List lessons by school."""
-        query = select(LessonModel).where(
-            LessonModel.school_id == school_id
-        ).order_by(LessonModel.created_at.desc())
+        query = (
+            select(LessonModel)
+            .options(selectinload(LessonModel.teacher), selectinload(LessonModel.school))
+            .where(LessonModel.school_id == school_id)
+            .order_by(LessonModel.created_at.desc())
+        )
 
         items, total = await self._paginate(query, pagination)
 
@@ -144,8 +151,10 @@ class LessonRepository(BaseRepository[LessonModel, Lesson], ILessonRepository):
         pagination: Optional[PaginationParams] = None,
     ) -> PaginatedResult[Lesson]:
         """List published lessons."""
-        query = select(LessonModel).where(
-            LessonModel.status == LessonStatus.PUBLISHED
+        query = (
+            select(LessonModel)
+            .options(selectinload(LessonModel.teacher), selectinload(LessonModel.school))
+            .where(LessonModel.status == LessonStatus.PUBLISHED)
         )
 
         if school_id:

@@ -68,6 +68,16 @@ class IUserRepository(ABC):
         """Check if user exists by email."""
         pass
 
+    @abstractmethod
+    async def get_by_nevo_id(self, nevo_id: str) -> Optional[User]:
+        """Get user by Nevo ID."""
+        pass
+
+    @abstractmethod
+    async def exists_by_nevo_id(self, nevo_id: str) -> bool:
+        """Check if a Nevo ID already exists."""
+        pass
+
 
 class ISchoolRepository(ABC):
     """School repository interface."""

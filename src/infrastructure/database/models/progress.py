@@ -21,10 +21,10 @@ class StudentProgressModel(BaseModel):
     )
 
     # Lesson progress stored as JSON (keyed by lesson_id)
-    lesson_progress = Column(JSON, default={}, nullable=False)
+    lesson_progress = Column(JSON, default=dict, nullable=False)
 
     # Skill progress stored as JSON (keyed by skill_name)
-    skill_progress = Column(JSON, default={}, nullable=False)
+    skill_progress = Column(JSON, default=dict, nullable=False)
 
     # Overall stats
     total_lessons_completed = Column(Integer, default=0, nullable=False)

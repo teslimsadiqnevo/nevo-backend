@@ -7,11 +7,13 @@ from src.application.features.auth.commands import (
     LoginCommand,
     RegisterCommand,
     RefreshTokenCommand,
+    NevoIdLoginCommand,
 )
 from src.application.features.auth.dtos import (
     LoginInput,
     RegisterInput,
     RefreshTokenInput,
+    NevoIdLoginInput,
 )
 from src.core.exceptions import AuthenticationError, ConflictError, ValidationError
 from src.presentation.api.v1.dependencies import get_uow
@@ -22,6 +24,7 @@ from src.presentation.schemas.auth import (
     RegisterResponse,
     RefreshTokenRequest,
     RefreshTokenResponse,
+    NevoIdLoginRequest,
 )
 
 router = APIRouter()
@@ -125,6 +128,7 @@ async def register(
                 password=request.password,
                 first_name=request.first_name,
                 last_name=request.last_name,
+                age=request.age,
                 role=request.role,
                 school_id=request.school_id,
                 phone_number=request.phone_number,
@@ -201,6 +205,67 @@ async def refresh_token(
         return RefreshTokenResponse(
             token=result.access_token,
             refresh_token=result.refresh_token,
+        )
+
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.message,
+        )
+
+
+@router.post(
+    "/login/nevo-id",
+    response_model=LoginResponse,
+    summary="Login with Nevo ID and PIN",
+    description="""
+Authenticate a student using their Nevo ID and 4-digit PIN.
+
+**Designed for tablet login** — students who may not remember email/password
+can use their unique Nevo ID (format: `NEVO-XXXXX`) and a 4-digit PIN.
+
+**Prerequisites:**
+1. Student must have completed the onboarding assessment (Nevo ID is auto-generated)
+2. Student must have set their PIN via `POST /students/me/pin`
+
+**Returns:** Same tokens and user info as regular login.
+
+**Usage:**
+```javascript
+const response = await fetch('/api/v1/auth/login/nevo-id', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ nevo_id: 'NEVO-7K3P2', pin: '1234' })
+});
+const { token, refresh_token, user } = await response.json();
+```
+    """,
+    responses={
+        200: {"description": "Login successful, returns tokens and user info"},
+        401: {"description": "Invalid Nevo ID or PIN"},
+    }
+)
+async def login_nevo_id(
+    request: NevoIdLoginRequest,
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Authenticate student with Nevo ID and PIN."""
+    try:
+        command = NevoIdLoginCommand(uow)
+        result = await command.execute(
+            NevoIdLoginInput(nevo_id=request.nevo_id, pin=request.pin)
+        )
+
+        return LoginResponse(
+            token=result.access_token,
+            refresh_token=result.refresh_token,
+            user={
+                "id": str(result.user_id),
+                "email": result.email,
+                "role": result.role.value,
+                "name": result.name,
+                "school_id": str(result.school_id) if result.school_id else None,
+            },
         )
 
     except AuthenticationError as e:

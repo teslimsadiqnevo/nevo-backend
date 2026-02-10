@@ -134,7 +134,8 @@ class SubmitAssessmentResponse(BaseModel):
                 "status": "completed",
                 "message": "Assessment completed and profile generated successfully",
                 "assessment_id": "550e8400-e29b-41d4-a716-446655440001",
-                "profile_id": "550e8400-e29b-41d4-a716-446655440002"
+                "profile_id": "550e8400-e29b-41d4-a716-446655440002",
+                "nevo_id": "NEVO-7K3P2"
             }
         }
     )
@@ -156,4 +157,8 @@ class SubmitAssessmentResponse(BaseModel):
     profile_id: Optional[str] = Field(
         None,
         description="Generated NeuroProfile UUID (available when status is 'completed')"
+    )
+    nevo_id: Optional[str] = Field(
+        None,
+        description="Student's Nevo ID for tablet login (format: NEVO-XXXXX, available when status is 'completed')"
     )

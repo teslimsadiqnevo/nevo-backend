@@ -36,6 +36,7 @@ class GeminiAIService(IAIService):
                 "interests": profile.get("interests", []),
                 "attention_span_minutes": profile.get("attention_span_minutes", 15),
                 "sensory_triggers": profile.get("sensory_triggers", []),
+                "feedback_preference": profile.get("feedback_preference", "gentle"),
             }
 
         except Exception as e:
@@ -175,25 +176,10 @@ Return ONLY the image prompt, no other text."""
 
     def _build_profile_generation_prompt(self, assessment_data: Dict[str, Any]) -> str:
         """Build the prompt for profile generation."""
-        return f"""You are an expert in neurodivergent education. Analyze the following student assessment responses and generate a learning profile.
-
-Assessment Data:
-{json.dumps(assessment_data, indent=2)}
-
-Based on these responses, create a JSON profile with these keys:
-{{
-    "learning_preference": "visual" | "auditory" | "kinesthetic" | "reading_writing",
-    "complexity_tolerance": "low" | "medium" | "high",
-    "interests": ["list", "of", "interests"],
-    "attention_span_minutes": <number 5-30>,
-    "sensory_triggers": ["list of triggers if any"]
-}}
-
-Rules:
-- DO NOT diagnose any medical conditions
-- Base analysis only on provided responses
-- Be conservative with attention span estimates
-- Return ONLY the JSON object, no other text"""
+        from src.ai.prompts.profile_prompts import PROFILE_GENERATION_PROMPT
+        return PROFILE_GENERATION_PROMPT.format(
+            assessment_json=json.dumps(assessment_data, indent=2)
+        )
 
     def _build_lesson_adaptation_prompt(
         self,

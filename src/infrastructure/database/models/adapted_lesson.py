@@ -1,6 +1,6 @@
 """AdaptedLesson database model."""
 
-from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import relationship
 
@@ -31,7 +31,7 @@ class AdaptedLessonModel(BaseModel):
     adaptation_style = Column(String(255), nullable=True)
 
     # Content blocks stored as JSON
-    content_blocks = Column(JSON, default=[], nullable=False)
+    content_blocks = Column(JSON, default=list, nullable=False)
 
     # Status
     status = Column(
@@ -54,10 +54,10 @@ class AdaptedLessonModel(BaseModel):
 
     # Relationships
     lesson = relationship("LessonModel", back_populates="adapted_lessons")
+    student = relationship("UserModel")
 
-    # Unique constraint on lesson_id + student_id
     __table_args__ = (
-        {"postgresql_partition_by": None},  # Placeholder for future partitioning
+        UniqueConstraint('lesson_id', 'student_id', name='uq_adapted_lesson_student'),
     )
 
     def __repr__(self) -> str:

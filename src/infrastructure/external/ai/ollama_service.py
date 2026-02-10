@@ -1,0 +1,226 @@
+"""Ollama local AI service implementation."""
+
+import json
+from typing import Any, Dict, List
+
+import httpx
+
+from src.core.config.settings import settings
+from src.core.exceptions import AIServiceError
+from src.domain.entities.lesson import Lesson
+from src.domain.entities.neuro_profile import NeuroProfile
+from src.domain.interfaces.services import IAIService
+
+
+class OllamaAIService(IAIService):
+    """AI service implementation using Ollama (local model)."""
+
+    def __init__(self):
+        self.base_url = settings.local_ai_url
+        self.model = settings.local_ai_model
+        self.http_client = httpx.AsyncClient(
+            timeout=120.0
+        )  # Longer timeout for local models
+
+    async def _generate_content(self, prompt: str) -> str:
+        """Generate content using Ollama."""
+        url = f"{self.base_url}/api/generate"
+
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.7,
+                "top_p": 0.9,
+            },
+        }
+
+        try:
+            response = await self.http_client.post(url, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            return result.get("response", "")
+        except httpx.HTTPError as e:
+            raise AIServiceError(
+                message=f"Ollama API request failed: {str(e)}",
+                model=self.model,
+            )
+        except Exception as e:
+            raise AIServiceError(
+                message=f"Failed to generate content: {str(e)}",
+                model=self.model,
+            )
+
+    def _parse_json_response(self, response: str) -> Any:
+        """Parse JSON from AI response."""
+        text = response.strip()
+
+        # Remove markdown code blocks if present
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+
+        if text.endswith("```"):
+            text = text[:-3]
+
+        text = text.strip()
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # Try to find JSON in the response
+            start = text.find("{")
+            end = text.rfind("}") + 1
+            if start >= 0 and end > start:
+                return json.loads(text[start:end])
+
+            start = text.find("[")
+            end = text.rfind("]") + 1
+            if start >= 0 and end > start:
+                return json.loads(text[start:end])
+
+            raise ValueError("Could not parse JSON from response")
+
+    async def generate_student_profile(
+        self,
+        assessment_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Generate a student profile from assessment data."""
+        from src.ai.prompts.profile_prompts import PROFILE_GENERATION_PROMPT
+
+        prompt = PROFILE_GENERATION_PROMPT.format(
+            assessment_json=json.dumps(assessment_data, indent=2)
+        )
+
+        try:
+            response = await self._generate_content(prompt)
+            profile = self._parse_json_response(response)
+
+            return {
+                "learning_style": profile.get("learning_preference", "visual"),
+                "complexity_tolerance": profile.get("complexity_tolerance", "medium"),
+                "interests": profile.get("interests", []),
+                "attention_span_minutes": profile.get("attention_span_minutes", 15),
+                "sensory_triggers": profile.get("sensory_triggers", []),
+                "feedback_preference": profile.get("feedback_preference", "gentle"),
+            }
+
+        except Exception as e:
+            raise AIServiceError(
+                message=f"Failed to generate profile: {str(e)}",
+                model=self.model,
+            )
+
+    async def adapt_lesson(
+        self,
+        lesson: Lesson,
+        profile: NeuroProfile,
+    ) -> Dict[str, Any]:
+        """Adapt a lesson for a specific student profile."""
+        from src.ai.prompts.adaptation_prompts import LESSON_ADAPTATION_PROMPT
+
+        profile_context = profile.to_ai_context()
+
+        prompt = LESSON_ADAPTATION_PROMPT.format(
+            learning_style=profile_context["learning_style"],
+            reading_level=profile_context["reading_level"],
+            complexity_tolerance=profile_context["complexity_tolerance"],
+            attention_span=profile_context["attention_span_minutes"],
+            interests=(
+                ", ".join(profile_context["interests"][:5])
+                if profile_context["interests"]
+                else "general topics"
+            ),
+            sensory_triggers=(
+                ", ".join(profile_context["sensory_triggers"])
+                if profile_context["sensory_triggers"]
+                else "none specified"
+            ),
+            lesson_title=lesson.title,
+            lesson_content=lesson.original_text_content[:5000],
+        )
+
+        try:
+            response = await self._generate_content(prompt)
+            adapted = self._parse_json_response(response)
+
+            return {
+                "adaptation_style": adapted.get(
+                    "adaptation_style", f"{profile.learning_style.value.title()} Focus"
+                ),
+                "blocks": adapted.get("blocks", []),
+            }
+
+        except Exception as e:
+            raise AIServiceError(
+                message=f"Failed to adapt lesson: {str(e)}",
+                model=self.model,
+            )
+
+    async def generate_quiz_questions(
+        self,
+        lesson_content: str,
+        profile: NeuroProfile,
+        num_questions: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """Generate quiz questions for a lesson."""
+        prompt = f"""Generate {num_questions} quiz questions based on this lesson content.
+
+Student profile:
+- Reading level: {profile.reading_level.value}
+- Complexity tolerance: {profile.complexity_tolerance.value}
+
+Lesson content:
+{lesson_content[:2000]}
+
+Generate questions as a JSON array with this structure:
+[
+    {{
+        "question": "The question text",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "correct_index": 0,
+        "explanation": "Brief explanation of the answer"
+    }}
+]
+
+Make questions appropriate for the student's reading level.
+Return ONLY the JSON array, no other text."""
+
+        try:
+            response = await self._generate_content(prompt)
+            questions = self._parse_json_response(response)
+            return questions if isinstance(questions, list) else []
+
+        except Exception as e:
+            raise AIServiceError(
+                message=f"Failed to generate quiz: {str(e)}",
+                model=self.model,
+            )
+
+    async def generate_image_prompt(
+        self,
+        concept: str,
+        profile: NeuroProfile,
+    ) -> str:
+        """Generate an image prompt for visual content."""
+        prompt = f"""Create a detailed image generation prompt for illustrating this concept:
+"{concept}"
+
+For a student who:
+- Prefers {profile.learning_style.value} learning
+- Has interests in: {', '.join(profile.interests[:3]) if profile.interests else 'general topics'}
+
+The prompt should describe a child-friendly, educational illustration.
+Return ONLY the image prompt, no other text."""
+
+        try:
+            response = await self._generate_content(prompt)
+            return response.strip()
+
+        except Exception as e:
+            raise AIServiceError(
+                message=f"Failed to generate image prompt: {str(e)}",
+                model=self.model,
+            )

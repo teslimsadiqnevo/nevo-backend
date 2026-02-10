@@ -40,7 +40,7 @@ class LessonModel(BaseModel):
     estimated_duration_minutes = Column(Integer, default=30, nullable=False)
 
     # Tags
-    tags = Column(ARRAY(String), default=[], nullable=True)
+    tags = Column(ARRAY(String), default=list, nullable=True)
 
     # Status
     status = Column(Enum(LessonStatus), default=LessonStatus.DRAFT, nullable=False, index=True)

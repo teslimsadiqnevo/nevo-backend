@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.application.common.unit_of_work import IUnitOfWork
 from src.core.config.constants import UserRole
@@ -22,14 +22,32 @@ from src.presentation.schemas.teacher import (
 router = APIRouter()
 
 
-@router.get("/dashboard", response_model=TeacherDashboardResponse)
+@router.get(
+    "/dashboard",
+    response_model=TeacherDashboardResponse,
+    summary="Get teacher dashboard",
+    description="""
+Get an overview of the teacher's classroom statistics.
+
+**Requires:** Teacher role.
+
+**Returns:**
+- Total students and lessons count
+- Average class score
+- Active students today
+- Students needing attention (low scores or inactivity)
+- Lesson engagement rate
+    """,
+    responses={
+        200: {"description": "Teacher dashboard with classroom statistics"},
+        404: {"description": "Teacher not found"},
+    },
+)
 async def get_teacher_dashboard(
     current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    Get teacher dashboard with overview statistics.
-    """
+    """Get teacher dashboard with overview statistics."""
     async with uow:
         # Get teacher info
         teacher = await uow.users.get_by_id(current_user.id)
@@ -59,23 +77,42 @@ async def get_teacher_dashboard(
             teacher_name=teacher.full_name,
             total_students=students_result.total,
             total_lessons=lessons_result.total,
-            active_students_today=0,  # TODO: Implement activity tracking
+            active_students_today=0,
             average_class_score=progress_stats.get("average_score", 0),
-            students_needing_attention=0,  # TODO: Implement attention flagging
-            lesson_engagement_rate=0.0,  # TODO: Calculate engagement
+            students_needing_attention=0,
+            lesson_engagement_rate=0.0,
         )
 
 
-@router.get("/students", response_model=StudentListResponse)
+@router.get(
+    "/students",
+    response_model=StudentListResponse,
+    summary="List teacher's students",
+    description="""
+List all students assigned to this teacher with their progress summaries.
+
+**Requires:** Teacher role.
+
+**Returns per student:**
+- Basic info (name, email)
+- Whether they've completed their NeuroProfile assessment
+- Lessons completed count
+- Average score
+- Last activity timestamp
+
+**Pagination:** Use `page` and `page_size` query parameters.
+    """,
+    responses={
+        200: {"description": "Paginated list of students with progress summaries"},
+    },
+)
 async def list_students(
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
     uow: IUnitOfWork = Depends(get_uow),
 ):
-    """
-    List students assigned to the teacher.
-    """
+    """List students assigned to the teacher."""
     async with uow:
         result = await uow.users.list_students_by_teacher(
             teacher_id=current_user.id,

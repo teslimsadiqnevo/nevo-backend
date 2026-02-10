@@ -1,0 +1,2 @@
+-- Seed data for local development
+-- Add any initial data here (e.g., test schools, users)

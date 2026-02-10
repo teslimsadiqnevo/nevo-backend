@@ -18,6 +18,7 @@ class User:
     first_name: str
     last_name: str
     id: UUID = field(default_factory=uuid4)
+    age: Optional[int] = None
     school_id: Optional[UUID] = None
     is_active: bool = True
     is_verified: bool = False
@@ -29,6 +30,21 @@ class User:
 
     # For parents - linked student IDs
     linked_student_ids: list[UUID] = field(default_factory=list)
+
+    # Nevo ID for student tablet login (e.g., "NEVO-7K3P2")
+    nevo_id: Optional[str] = None
+    # Bcrypt hash of the 4-digit PIN
+    pin_hash: Optional[str] = None
+
+    @property
+    def has_nevo_id(self) -> bool:
+        """Check if student has a Nevo ID assigned."""
+        return self.nevo_id is not None
+
+    @property
+    def has_pin(self) -> bool:
+        """Check if student has set a PIN."""
+        return self.pin_hash is not None
 
     @property
     def full_name(self) -> str:

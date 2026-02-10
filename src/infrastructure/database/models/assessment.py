@@ -30,7 +30,7 @@ class AssessmentModel(BaseModel):
     )
 
     # Answers stored as JSON
-    answers = Column(JSON, default=[], nullable=False)
+    answers = Column(JSON, default=list, nullable=False)
 
     # Progress tracking
     current_question_index = Column(Integer, default=0, nullable=False)

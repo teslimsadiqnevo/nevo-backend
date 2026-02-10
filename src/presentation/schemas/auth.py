@@ -99,6 +99,13 @@ class RegisterRequest(BaseModel):
         description="User's last name",
         examples=["Doe"]
     )
+    age: Optional[int] = Field(
+        None,
+        ge=5,
+        le=120,
+        description="User's age (optional, typically for students)",
+        examples=[10]
+    )
     role: UserRole = Field(
         ...,
         description="User role: student, teacher, school_admin, parent, or super_admin"
@@ -165,3 +172,66 @@ class RefreshTokenResponse(BaseModel):
 
     token: str = Field(..., description="New JWT access token")
     refresh_token: str = Field(..., description="New JWT refresh token")
+
+
+class NevoIdLoginRequest(BaseModel):
+    """Nevo ID login request schema."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "nevo_id": "NEVO-7K3P2",
+                "pin": "1234"
+            }
+        }
+    )
+
+    nevo_id: str = Field(
+        ...,
+        pattern=r"^NEVO-[23456789A-HJ-NP-Z]{5}$",
+        description="Student's Nevo ID (format: NEVO-XXXXX)",
+        examples=["NEVO-7K3P2"]
+    )
+    pin: str = Field(
+        ...,
+        pattern=r"^\d{4}$",
+        description="4-digit PIN",
+        examples=["1234"]
+    )
+
+
+class SetPinRequest(BaseModel):
+    """Set PIN request schema."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "pin": "1234"
+            }
+        }
+    )
+
+    pin: str = Field(
+        ...,
+        pattern=r"^\d{4}$",
+        description="4-digit PIN (numbers only)",
+        examples=["1234"]
+    )
+
+
+class SetPinResponse(BaseModel):
+    """Set PIN response schema."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "success": True,
+                "message": "PIN set successfully",
+                "nevo_id": "NEVO-7K3P2"
+            }
+        }
+    )
+
+    success: bool = Field(..., description="Whether PIN was set successfully")
+    message: str = Field(..., description="Status message")
+    nevo_id: Optional[str] = Field(None, description="Student's Nevo ID")

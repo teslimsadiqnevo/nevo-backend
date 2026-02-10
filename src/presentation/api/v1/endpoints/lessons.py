@@ -3,7 +3,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 
 from src.application.common.unit_of_work import IUnitOfWork
 from src.application.features.lessons.commands import CreateLessonCommand, SubmitFeedbackCommand
@@ -27,6 +27,7 @@ from src.presentation.schemas.lesson import (
     LessonListResponse,
     PlayLessonResponse,
     SubmitFeedbackRequest,
+    SubmitFeedbackResponse,
 )
 
 router = APIRouter()
@@ -82,7 +83,25 @@ async def upload_lesson(
 
         # Upload file if provided
         if file:
+            allowed_types = {
+                "application/pdf", "image/jpeg", "image/png",
+                "image/gif", "image/webp", "video/mp4", "video/webm",
+            }
+            if file.content_type not in allowed_types:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"File type '{file.content_type}' not allowed",
+                )
+
             file_content = await file.read()
+
+            max_size = 50 * 1024 * 1024  # 50MB
+            if len(file_content) > max_size:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="File size exceeds maximum of 50MB",
+                )
+
             media_url = await storage_service.upload_file(
                 file_content=file_content,
                 file_name=file.filename,
@@ -144,8 +163,8 @@ List lessons with optional filtering and pagination.
 async def list_lessons(
     teacher_id: Optional[UUID] = None,
     school_id: Optional[UUID] = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(default=1, ge=1, description="Page number"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
     current_user: CurrentUser = Depends(get_current_active_user),
     uow: IUnitOfWork = Depends(get_uow),
 ):
@@ -312,6 +331,7 @@ async def play_lesson(
 
 @router.post(
     "/{lesson_id}/feedback",
+    response_model=SubmitFeedbackResponse,
     summary="Submit feedback on adapted content",
     description="""
 Submit teacher feedback on AI-generated adapted content for model improvement.

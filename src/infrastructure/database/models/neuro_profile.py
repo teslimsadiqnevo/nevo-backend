@@ -22,7 +22,7 @@ class NeuroProfileModel(BaseModel):
     )
 
     # Assessment data
-    assessment_raw_data = Column(JSON, default={}, nullable=False)
+    assessment_raw_data = Column(JSON, default=dict, nullable=False)
 
     # Generated profile attributes
     learning_style = Column(
@@ -43,17 +43,17 @@ class NeuroProfileModel(BaseModel):
     attention_span_minutes = Column(Integer, default=15, nullable=False)
 
     # Sensory triggers stored as JSON array of strings
-    sensory_triggers = Column(JSON, default=[], nullable=False)
+    sensory_triggers = Column(JSON, default=list, nullable=False)
 
     # Interests and preferences
-    interests = Column(ARRAY(String), default=[], nullable=True)
-    preferred_subjects = Column(ARRAY(String), default=[], nullable=True)
+    interests = Column(ARRAY(String), default=list, nullable=True)
+    preferred_subjects = Column(ARRAY(String), default=list, nullable=True)
 
     # Full generated profile from AI
-    generated_profile = Column(JSON, default={}, nullable=False)
+    generated_profile = Column(JSON, default=dict, nullable=False)
 
     # Confidence scores
-    confidence_scores = Column(JSON, default={}, nullable=False)
+    confidence_scores = Column(JSON, default=dict, nullable=False)
 
     # Last updated and version
     last_updated = Column(DateTime, nullable=True)

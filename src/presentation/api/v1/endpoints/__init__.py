@@ -3,6 +3,7 @@
 from src.presentation.api.v1.endpoints import (
     auth,
     assessments,
+    email,
     lessons,
     students,
     teachers,
@@ -13,6 +14,7 @@ from src.presentation.api.v1.endpoints import (
 __all__ = [
     "auth",
     "assessments",
+    "email",
     "lessons",
     "students",
     "teachers",

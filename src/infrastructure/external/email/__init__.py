@@ -1,5 +1,5 @@
 """Email services module."""
 
-from src.infrastructure.external.email.smtp_service import SMTPEmailService
+from src.infrastructure.external.email.resend_service import ResendEmailService
 
-__all__ = ["SMTPEmailService"]
+__all__ = ["ResendEmailService"]

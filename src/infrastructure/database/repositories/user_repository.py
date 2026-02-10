@@ -29,6 +29,7 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             role=model.role,
             first_name=model.first_name,
             last_name=model.last_name,
+            age=model.age,
             school_id=model.school_id,
             is_active=model.is_active,
             is_verified=model.is_verified,
@@ -38,6 +39,8 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             updated_at=model.updated_at,
             last_login_at=model.last_login_at,
             linked_student_ids=model.linked_student_ids or [],
+            nevo_id=model.nevo_id,
+            pin_hash=model.pin_hash,
         )
 
     def _to_model(self, entity: User) -> UserModel:
@@ -49,6 +52,7 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             role=entity.role,
             first_name=entity.first_name,
             last_name=entity.last_name,
+            age=entity.age,
             school_id=entity.school_id,
             is_active=entity.is_active,
             is_verified=entity.is_verified,
@@ -58,6 +62,8 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             updated_at=entity.updated_at,
             last_login_at=entity.last_login_at,
             linked_student_ids=entity.linked_student_ids,
+            nevo_id=entity.nevo_id,
+            pin_hash=entity.pin_hash,
         )
 
     async def create(self, user: User) -> User:
@@ -87,12 +93,15 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             model.password_hash = user.password_hash
             model.first_name = user.first_name
             model.last_name = user.last_name
+            model.age = user.age
             model.is_active = user.is_active
             model.is_verified = user.is_verified
             model.avatar_url = user.avatar_url
             model.phone_number = user.phone_number
             model.last_login_at = user.last_login_at
             model.updated_at = user.updated_at
+            model.nevo_id = user.nevo_id
+            model.pin_hash = user.pin_hash
             await self.session.flush()
             return self._to_entity(model)
         return user
@@ -145,5 +154,20 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
         """Check if user exists by email."""
         result = await self.session.execute(
             select(UserModel.id).where(UserModel.email == email)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def get_by_nevo_id(self, nevo_id: str) -> Optional[User]:
+        """Get user by Nevo ID."""
+        result = await self.session.execute(
+            select(UserModel).where(UserModel.nevo_id == nevo_id)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def exists_by_nevo_id(self, nevo_id: str) -> bool:
+        """Check if a Nevo ID already exists."""
+        result = await self.session.execute(
+            select(UserModel.id).where(UserModel.nevo_id == nevo_id)
         )
         return result.scalar_one_or_none() is not None

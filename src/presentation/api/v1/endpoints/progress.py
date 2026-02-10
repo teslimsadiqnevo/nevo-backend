@@ -15,12 +15,38 @@ from src.presentation.api.v1.dependencies import (
     require_role,
     CurrentUser,
 )
-from src.presentation.schemas.progress import UpdateProgressRequest
+from src.presentation.schemas.progress import UpdateProgressRequest, UpdateProgressResponse
 
 router = APIRouter()
 
 
-@router.post("/update")
+@router.post(
+    "/update",
+    response_model=UpdateProgressResponse,
+    summary="Update lesson progress",
+    description="""
+Track a student's progress through a lesson.
+
+**Requires:** Student role.
+
+**When to call:**
+- Periodically as the student views content blocks
+- When a quiz is answered (include `quiz_score`)
+- When the student finishes the lesson (`is_completed: true`)
+
+**What happens:**
+1. Creates or updates the student's progress record for this lesson
+2. Tracks blocks completed, time spent, and quiz scores
+3. If `is_completed` is true, marks the lesson as finished and updates streaks
+
+**Note:** The student must have played the lesson (via `/lessons/{id}/play`) before
+progress can be tracked, as the system needs the adapted lesson's block count.
+    """,
+    responses={
+        200: {"description": "Progress updated successfully"},
+        404: {"description": "Lesson not found"},
+    },
+)
 async def update_progress(
     request: UpdateProgressRequest,
     current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
