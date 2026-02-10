@@ -37,7 +37,8 @@ class RegisterInput:
     password: str
     first_name: str
     last_name: str
-    role: UserRole
+    age: Optional[int] = None
+    role: UserRole = UserRole.STUDENT
     school_id: Optional[UUID] = None
     phone_number: Optional[str] = None
 
@@ -90,3 +91,28 @@ class ResetPasswordInput:
 
     reset_token: str
     new_password: str
+
+
+@dataclass(frozen=True)
+class NevoIdLoginInput:
+    """Input DTO for Nevo ID login."""
+
+    nevo_id: str
+    pin: str
+
+
+@dataclass(frozen=True)
+class SetPinInput:
+    """Input DTO for setting student PIN."""
+
+    user_id: UUID
+    pin: str
+
+
+@dataclass
+class SetPinOutput:
+    """Output DTO for setting PIN."""
+
+    success: bool
+    message: str = "PIN set successfully"
+    nevo_id: Optional[str] = None

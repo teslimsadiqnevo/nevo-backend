@@ -10,6 +10,9 @@ from src.application.features.auth.dtos.auth_dtos import (
     ChangePasswordInput,
     ForgotPasswordInput,
     ResetPasswordInput,
+    NevoIdLoginInput,
+    SetPinInput,
+    SetPinOutput,
 )
 
 __all__ = [
@@ -22,4 +25,7 @@ __all__ = [
     "ChangePasswordInput",
     "ForgotPasswordInput",
     "ResetPasswordInput",
+    "NevoIdLoginInput",
+    "SetPinInput",
+    "SetPinOutput",
 ]

@@ -7,6 +7,7 @@ from src.core.security.jwt import (
     decode_token,
     verify_token_type,
 )
+from src.core.security.nevo_id import generate_nevo_id
 
 __all__ = [
     "hash_password",
@@ -15,4 +16,5 @@ __all__ = [
     "create_refresh_token",
     "decode_token",
     "verify_token_type",
+    "generate_nevo_id",
 ]

@@ -60,6 +60,7 @@ class RegisterCommand(UseCase[RegisterInput, RegisterOutput]):
                 password_hash=hash_password(input_dto.password),
                 first_name=input_dto.first_name,
                 last_name=input_dto.last_name,
+                age=input_dto.age,
                 role=input_dto.role,
                 school_id=input_dto.school_id,
                 phone_number=input_dto.phone_number,

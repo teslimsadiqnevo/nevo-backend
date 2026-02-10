@@ -28,14 +28,28 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", description="Server host")
     port: int = Field(default=8000, description="Server port")
 
-    # Database
-    database_url: str = Field(..., description="PostgreSQL connection URL")
-    database_echo: bool = Field(default=False, description="Echo SQL queries")
-
-    # Redis
-    redis_url: str = Field(
-        default="redis://localhost:6379/0", description="Redis connection URL"
+    # Database - Supabase PostgreSQL
+    database_url: str = Field(
+        ..., description="Supabase PostgreSQL connection URL (postgresql+asyncpg://...)"
     )
+    database_echo: bool = Field(default=False, description="Echo SQL queries")
+    supabase_url: str = Field(
+        default="", description="Supabase project URL (optional, for direct API access)"
+    )
+    supabase_key: str = Field(
+        default="", description="Supabase anon/service key (optional)"
+    )
+
+    # Redis Cache - Upstash
+    redis_url: str = Field(
+        default="",
+        description="Redis connection URL (Upstash REST endpoint or standard redis:// URL)",
+    )
+    upstash_rest_token: str = Field(
+        default="",
+        description="Upstash REST API token (required if using Upstash REST API)",
+    )
+    redis_enabled: bool = Field(default=True, description="Enable Redis caching")
 
     # JWT
     jwt_secret_key: str = Field(..., description="JWT secret key")
@@ -51,6 +65,18 @@ class Settings(BaseSettings):
     google_api_key: str = Field(default="", description="Google API key for Gemini")
     gemini_model: str = Field(default="gemini-pro", description="Gemini model name")
 
+    # AI - Local Model (Ollama)
+    local_ai_enabled: bool = Field(
+        default=False, description="Enable local AI model (Ollama)"
+    )
+    local_ai_url: str = Field(
+        default="http://localhost:11434", description="Ollama API URL"
+    )
+    local_ai_model: str = Field(
+        default="llama3.2",
+        description="Local AI model name (e.g., llama3.2, mistral, qwen2.5)",
+    )
+
     # AI - OpenAI
     openai_api_key: str = Field(default="", description="OpenAI API key")
 
@@ -64,12 +90,12 @@ class Settings(BaseSettings):
     gcp_project_id: str = Field(default="", description="GCP project ID")
     gcs_bucket_name: str = Field(default="nevo-lessons", description="GCS bucket name")
 
-    # Email
-    smtp_host: str = Field(default="smtp.gmail.com", description="SMTP host")
-    smtp_port: int = Field(default=587, description="SMTP port")
-    smtp_user: str = Field(default="", description="SMTP username")
-    smtp_password: str = Field(default="", description="SMTP password")
-    email_from: str = Field(default="noreply@nevo.com", description="Email from address")
+    # Email - Resend
+    resend_api_key: str = Field(..., description="Resend API key")
+    email_from: str = Field(
+        default="noreply@nevolearning.com",
+        description="Email from address (must be verified in Resend)",
+    )
 
     # Celery
     celery_broker_url: str = Field(
@@ -77,6 +103,12 @@ class Settings(BaseSettings):
     )
     celery_result_backend: str = Field(
         default="redis://localhost:6379/2", description="Celery result backend"
+    )
+
+    # Frontend
+    frontend_url: str = Field(
+        default="http://localhost:3000",
+        description="Frontend application URL for email links",
     )
 
     # CORS
@@ -92,6 +124,7 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, v):
         if isinstance(v, str):
             import json
+
             try:
                 return json.loads(v)
             except json.JSONDecodeError:
