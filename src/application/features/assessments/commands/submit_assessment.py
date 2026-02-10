@@ -7,6 +7,7 @@ from src.application.features.assessments.dtos import (
     SubmitAssessmentOutput,
 )
 from src.core.exceptions import EntityNotFoundError, ValidationError
+from src.core.security import generate_nevo_id
 from src.domain.entities.assessment import Assessment
 from src.domain.entities.neuro_profile import NeuroProfile
 from src.domain.interfaces.services import IAIService
@@ -89,6 +90,18 @@ class SubmitAssessmentCommand(UseCase[SubmitAssessmentInput, SubmitAssessmentOut
 
                 assessment.generated_profile_id = profile.id
                 await self.uow.assessments.update(assessment)
+
+                # Generate Nevo ID if student doesn't have one
+                nevo_id = student.nevo_id
+                if not student.has_nevo_id:
+                    for _ in range(5):  # Max 5 retries for collision
+                        candidate = generate_nevo_id()
+                        if not await self.uow.users.exists_by_nevo_id(candidate):
+                            student.nevo_id = candidate
+                            nevo_id = candidate
+                            await self.uow.users.update(student)
+                            break
+
                 await self.uow.commit()
 
                 return SubmitAssessmentOutput(
@@ -96,6 +109,7 @@ class SubmitAssessmentCommand(UseCase[SubmitAssessmentInput, SubmitAssessmentOut
                     message="Assessment completed and profile generated",
                     assessment_id=assessment.id,
                     profile_id=profile.id,
+                    nevo_id=nevo_id,
                 )
 
             except Exception:

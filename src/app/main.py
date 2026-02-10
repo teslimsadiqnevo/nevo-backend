@@ -109,6 +109,35 @@ Real-time tracking of lesson completion, time spent, quiz scores, and learning s
 - `streak` - Consecutive learning days
         """,
     },
+    {
+        "name": "Email",
+        "description": """
+**Customizable email sending service**
+
+Send custom emails for any service needs. Supports both single and bulk email sending.
+
+### Features
+- Plain text and HTML support
+- Bulk email (up to 100 recipients per request)
+- Automatic error handling
+- Uses Resend service
+
+### Use Cases
+- Welcome emails
+- Notification emails
+- Password resets
+- Email verifications
+- Newsletters
+- Announcements
+- Custom communications
+
+### Endpoints
+- `POST /email/send` - Send single email
+- `POST /email/send-bulk` - Send bulk emails
+
+**Note:** All emails are sent from the configured sender address (`noreply@nevolearning.com`).
+        """,
+    },
 ]
 
 
@@ -140,7 +169,7 @@ Nevo is an AI-powered personalized learning platform that adapts educational con
 
 ### Base URL
 - **Local**: `http://localhost:8000/api/v1`
-- **Production**: `https://api.nevo.com/api/v1`
+- **Production**: `https://api.nevolearning.com/api/v1`
 
 ### Authentication
 All protected endpoints require a JWT token:
@@ -178,6 +207,14 @@ Authorization: Bearer <access_token>
 4. GET /schools/teachers
 ```
 
+#### Email Service Flow
+```
+1. POST /auth/login (get authentication token)
+2. POST /email/send (send custom email)
+   OR
+   POST /email/send-bulk (send to multiple recipients)
+```
+
 ---
 
 ## 📊 Core Features
@@ -204,6 +241,27 @@ The `/lessons/{id}/play` endpoint is the **core AI feature**:
   "order": 0
 }
 ```
+
+---
+
+## 📧 Email Service
+
+The email API provides flexible email sending capabilities for any service needs:
+
+### Single Email
+- `POST /email/send` - Send to one recipient
+- Supports plain text and HTML
+- Automatic error handling
+
+### Bulk Email
+- `POST /email/send-bulk` - Send to up to 100 recipients
+- Returns success/failure counts
+- Lists failed recipients
+
+**Configuration:**
+- Uses Resend service
+- Sender: `noreply@nevolearning.com`
+- Requires authentication
 
 ---
 
@@ -238,6 +296,7 @@ All errors return:
 | `AUTHORIZATION_ERROR` | 403 | Insufficient permissions |
 | `NOT_FOUND` | 404 | Resource not found |
 | `CONFLICT` | 409 | Resource already exists |
+| `EXTERNAL_SERVICE_ERROR` | 502 | External service failure (e.g., email service) |
 | `INTERNAL_ERROR` | 500 | Server error |
 
 ---
@@ -269,13 +328,13 @@ Use the **"Try it out"** button in Swagger UI below!
     # Add servers
     openapi_schema["servers"] = [
         {"url": "http://localhost:8000", "description": "Local Development"},
-        {"url": "https://api.nevo.com", "description": "Production"},
+        {"url": "https://api.nevolearning.com", "description": "Production"},
     ]
 
     # Add contact and license info
     openapi_schema["info"]["contact"] = {
         "name": "Nevo Backend Team",
-        "email": "backend@nevo.com",
+        "email": "backend@nevolearning.com",
     }
 
     app.openapi_schema = openapi_schema

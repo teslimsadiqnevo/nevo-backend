@@ -55,6 +55,7 @@ class SubmitAssessmentOutput:
     message: str
     assessment_id: Optional[UUID] = None
     profile_id: Optional[UUID] = None
+    nevo_id: Optional[str] = None
 
 
 @dataclass
