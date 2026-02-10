@@ -112,7 +112,13 @@ class SubmitAssessmentCommand(UseCase[SubmitAssessmentInput, SubmitAssessmentOut
                     nevo_id=nevo_id,
                 )
 
-            except Exception:
+            except Exception as e:
+                # Log the actual error for debugging
+                import logging
+                logging.getLogger(__name__).error(
+                    "Profile generation failed: %s: %s", type(e).__name__, e,
+                    exc_info=True,
+                )
                 # If AI fails, still save assessment but indicate processing
                 return SubmitAssessmentOutput(
                     status="processing",

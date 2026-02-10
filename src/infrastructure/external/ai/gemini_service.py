@@ -3,7 +3,8 @@
 import json
 from typing import Any, Dict, List
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from src.core.config.settings import settings
 from src.core.exceptions import AIServiceError
@@ -16,8 +17,8 @@ class GeminiAIService(IAIService):
     """AI service implementation using Google Gemini."""
 
     def __init__(self):
-        genai.configure(api_key=settings.google_api_key)
-        self.model = genai.GenerativeModel(settings.gemini_model)
+        self.client = genai.Client(api_key=settings.google_api_key)
+        self.model_name = settings.gemini_model
 
     async def generate_student_profile(
         self,
@@ -27,7 +28,7 @@ class GeminiAIService(IAIService):
         prompt = self._build_profile_generation_prompt(assessment_data)
 
         try:
-            response = await self._generate_content(prompt)
+            response = await self._generate_content(prompt, json_output=True)
             profile = self._parse_json_response(response)
 
             return {
@@ -42,7 +43,7 @@ class GeminiAIService(IAIService):
         except Exception as e:
             raise AIServiceError(
                 message=f"Failed to generate profile: {str(e)}",
-                model=settings.gemini_model,
+                model=self.model_name,
             )
 
     async def adapt_lesson(
@@ -68,7 +69,7 @@ class GeminiAIService(IAIService):
         except Exception as e:
             raise AIServiceError(
                 message=f"Failed to adapt lesson: {str(e)}",
-                model=settings.gemini_model,
+                model=self.model_name,
             )
 
     async def generate_quiz_questions(
@@ -101,14 +102,14 @@ Make questions appropriate for the student's reading level.
 Return ONLY the JSON array, no other text."""
 
         try:
-            response = await self._generate_content(prompt)
+            response = await self._generate_content(prompt, json_output=True)
             questions = self._parse_json_response(response)
             return questions if isinstance(questions, list) else []
 
         except Exception as e:
             raise AIServiceError(
                 message=f"Failed to generate quiz: {str(e)}",
-                model=settings.gemini_model,
+                model=self.model_name,
             )
 
     async def generate_image_prompt(
@@ -134,12 +135,23 @@ Return ONLY the image prompt, no other text."""
         except Exception as e:
             raise AIServiceError(
                 message=f"Failed to generate image prompt: {str(e)}",
-                model=settings.gemini_model,
+                model=self.model_name,
             )
 
-    async def _generate_content(self, prompt: str) -> str:
-        """Generate content using Gemini."""
-        response = self.model.generate_content(prompt)
+    async def _generate_content(self, prompt: str, json_output: bool = False) -> str:
+        """Generate content using Gemini (true async)."""
+        if json_output:
+            config = types.GenerateContentConfig(
+                max_output_tokens=4096,
+                response_mime_type="application/json",
+            )
+        else:
+            config = types.GenerateContentConfig(max_output_tokens=4096)
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=config,
+        )
         return response.text
 
     def _parse_json_response(self, response: str) -> Any:

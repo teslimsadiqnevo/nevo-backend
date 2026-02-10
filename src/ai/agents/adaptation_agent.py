@@ -3,7 +3,8 @@
 import json
 from typing import Any, Dict, List
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from src.ai.prompts.adaptation_prompts import LESSON_ADAPTATION_PROMPT
 from src.core.config.settings import settings
@@ -21,14 +22,12 @@ class LessonAdaptationAgent:
     """
 
     def __init__(self):
-        genai.configure(api_key=settings.google_api_key)
-        self.model = genai.GenerativeModel(
-            settings.gemini_model,
-            generation_config={
-                "temperature": 0.7,  # Some creativity for engaging content
-                "top_p": 0.9,
-                "max_output_tokens": 4096,
-            },
+        self.client = genai.Client(api_key=settings.google_api_key)
+        self.model_name = settings.gemini_model
+        self.config = types.GenerateContentConfig(
+            temperature=0.7,  # Some creativity for engaging content
+            top_p=0.9,
+            max_output_tokens=4096,
         )
 
     async def adapt_lesson(
@@ -60,7 +59,11 @@ class LessonAdaptationAgent:
         )
 
         try:
-            response = self.model.generate_content(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=self.config,
+            )
             adapted = self._parse_response(response.text)
 
             # Validate and sanitize blocks
@@ -71,7 +74,7 @@ class LessonAdaptationAgent:
         except Exception as e:
             raise AIServiceError(
                 message=f"Lesson adaptation failed: {str(e)}",
-                model=settings.gemini_model,
+                model=self.model_name,
             )
 
     def _parse_response(self, response_text: str) -> Dict[str, Any]:

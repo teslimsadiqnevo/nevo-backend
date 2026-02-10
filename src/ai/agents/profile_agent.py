@@ -3,7 +3,8 @@
 import json
 from typing import Any, Dict
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from src.ai.prompts.profile_prompts import PROFILE_GENERATION_PROMPT
 from src.core.config.settings import settings
@@ -14,19 +15,17 @@ class ProfileGenerationAgent:
     """
     Agent for generating student neuro-profiles from assessment data.
 
-    Uses Gemini Pro for complex reasoning about learning preferences
+    Uses Gemini for complex reasoning about learning preferences
     and potential accommodations.
     """
 
     def __init__(self):
-        genai.configure(api_key=settings.google_api_key)
-        self.model = genai.GenerativeModel(
-            settings.gemini_model,
-            generation_config={
-                "temperature": 0.3,  # Lower temperature for more consistent outputs
-                "top_p": 0.8,
-                "max_output_tokens": 2048,
-            },
+        self.client = genai.Client(api_key=settings.google_api_key)
+        self.model_name = settings.gemini_model
+        self.config = types.GenerateContentConfig(
+            temperature=0.3,  # Lower temperature for more consistent outputs
+            top_p=0.8,
+            max_output_tokens=2048,
         )
 
     async def generate_profile(
@@ -47,7 +46,11 @@ class ProfileGenerationAgent:
         )
 
         try:
-            response = self.model.generate_content(prompt)
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=self.config,
+            )
             profile = self._parse_response(response.text)
 
             # Validate required fields
@@ -58,7 +61,7 @@ class ProfileGenerationAgent:
         except Exception as e:
             raise AIServiceError(
                 message=f"Profile generation failed: {str(e)}",
-                model=settings.gemini_model,
+                model=self.model_name,
             )
 
     def _parse_response(self, response_text: str) -> Dict[str, Any]:

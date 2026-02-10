@@ -5,6 +5,7 @@ __pycache__/
 .claude
 *.md
 *.ps1
+test_flow.py
 
 # C extensions
 *.so
