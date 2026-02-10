@@ -5,7 +5,8 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PORT=8000
 
 # Set work directory
 WORKDIR /app
@@ -32,12 +33,8 @@ RUN adduser --disabled-password --gecos '' appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Expose port (Render sets PORT env var dynamically)
+EXPOSE ${PORT}
 
-# Expose port
-EXPOSE 8000
-
-# Default command for production
-CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Use shell form so $PORT is expanded at runtime
+CMD uvicorn src.app.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 120
