@@ -5,6 +5,12 @@ from src.application.features.students.dtos.student_dtos import (
     StudentListOutput,
     StudentProfileOutput,
     AddStudentInput,
+    StudentDashboardOutput,
+    CurrentLessonOutput,
+    RecentFeedbackOutput,
+    DashboardStatsOutput,
+    SendFeedbackInput,
+    SendFeedbackOutput,
 )
 
 __all__ = [
@@ -12,4 +18,10 @@ __all__ = [
     "StudentListOutput",
     "StudentProfileOutput",
     "AddStudentInput",
+    "StudentDashboardOutput",
+    "CurrentLessonOutput",
+    "RecentFeedbackOutput",
+    "DashboardStatsOutput",
+    "SendFeedbackInput",
+    "SendFeedbackOutput",
 ]

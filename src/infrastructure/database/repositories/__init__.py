@@ -8,6 +8,8 @@ from src.infrastructure.database.repositories.neuro_profile_repository import Ne
 from src.infrastructure.database.repositories.assessment_repository import AssessmentRepository
 from src.infrastructure.database.repositories.progress_repository import ProgressRepository
 from src.infrastructure.database.repositories.training_data_repository import TrainingDataRepository
+from src.infrastructure.database.repositories.teacher_feedback_repository import TeacherFeedbackRepository
+from src.infrastructure.database.repositories.chat_message_repository import ChatMessageRepository
 
 __all__ = [
     "UserRepository",
@@ -18,4 +20,6 @@ __all__ = [
     "AssessmentRepository",
     "ProgressRepository",
     "TrainingDataRepository",
+    "TeacherFeedbackRepository",
+    "ChatMessageRepository",
 ]

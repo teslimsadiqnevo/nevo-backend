@@ -1,7 +1,7 @@
 """Google Gemini AI service implementation."""
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from google import genai
 from google.genai import types
@@ -60,8 +60,7 @@ class GeminiAIService(IAIService):
 
             return {
                 "adaptation_style": adapted.get(
-                    "adaptation_style",
-                    f"{profile.learning_style.value.title()} Focus"
+                    "adaptation_style", f"{profile.learning_style.value.title()} Focus"
                 ),
                 "blocks": adapted.get("blocks", []),
             }
@@ -138,6 +137,44 @@ Return ONLY the image prompt, no other text."""
                 model=self.model_name,
             )
 
+    async def generate_chat_response(
+        self,
+        question: str,
+        profile: NeuroProfile,
+        chat_history: List[Dict[str, str]],
+        lesson_context: Optional[str] = None,
+    ) -> str:
+        """Generate a conversational response as Nevo AI tutor."""
+        from src.ai.prompts.chat_prompts import NEVO_CHAT_PROMPT
+
+        profile_context = profile.to_ai_context()
+
+        # Build conversation history text
+        history_text = ""
+        for msg in chat_history[-10:]:  # Last 10 messages for context
+            role_label = "Student" if msg["role"] == "student" else "Nevo"
+            history_text += f"{role_label}: {msg['content']}\n"
+
+        prompt = NEVO_CHAT_PROMPT.format(
+            learning_style=profile_context["learning_style"],
+            reading_level=profile_context["reading_level"],
+            complexity_tolerance=profile_context["complexity_tolerance"],
+            interests=", ".join(profile_context["interests"][:5]) if profile_context["interests"] else "general topics",
+            lesson_context=lesson_context[:2000] if lesson_context else "No specific lesson context.",
+            chat_history=history_text if history_text else "No previous messages.",
+            question=question,
+        )
+
+        try:
+            response = await self._generate_content(prompt)
+            return response.strip()
+
+        except Exception as e:
+            raise AIServiceError(
+                message=f"Failed to generate chat response: {str(e)}",
+                model=self.model_name,
+            )
+
     async def _generate_content(self, prompt: str, json_output: bool = False) -> str:
         """Generate content using Gemini (true async)."""
         if json_output:
@@ -152,6 +189,11 @@ Return ONLY the image prompt, no other text."""
             contents=prompt,
             config=config,
         )
+        if response.text is None:
+            raise AIServiceError(
+                message="Gemini returned empty response",
+                model=self.model_name,
+            )
         return response.text
 
     def _parse_json_response(self, response: str) -> Any:
@@ -189,6 +231,7 @@ Return ONLY the image prompt, no other text."""
     def _build_profile_generation_prompt(self, assessment_data: Dict[str, Any]) -> str:
         """Build the prompt for profile generation."""
         from src.ai.prompts.profile_prompts import PROFILE_GENERATION_PROMPT
+
         return PROFILE_GENERATION_PROMPT.format(
             assessment_json=json.dumps(assessment_data, indent=2)
         )

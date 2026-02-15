@@ -13,6 +13,8 @@ if TYPE_CHECKING:
         IAssessmentRepository,
         IProgressRepository,
         ITrainingDataRepository,
+        ITeacherFeedbackRepository,
+        IChatMessageRepository,
     )
 
 
@@ -27,6 +29,8 @@ class IUnitOfWork(ABC):
     assessments: "IAssessmentRepository"
     progress: "IProgressRepository"
     training_data: "ITrainingDataRepository"
+    teacher_feedbacks: "ITeacherFeedbackRepository"
+    chat_messages: "IChatMessageRepository"
 
     @abstractmethod
     async def __aenter__(self) -> "IUnitOfWork":

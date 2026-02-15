@@ -1,7 +1,7 @@
 """Ollama local AI service implementation."""
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -222,5 +222,42 @@ Return ONLY the image prompt, no other text."""
         except Exception as e:
             raise AIServiceError(
                 message=f"Failed to generate image prompt: {str(e)}",
+                model=self.model,
+            )
+
+    async def generate_chat_response(
+        self,
+        question: str,
+        profile: NeuroProfile,
+        chat_history: List[Dict[str, str]],
+        lesson_context: Optional[str] = None,
+    ) -> str:
+        """Generate a conversational response as Nevo AI tutor."""
+        from src.ai.prompts.chat_prompts import NEVO_CHAT_PROMPT
+
+        profile_context = profile.to_ai_context()
+
+        history_text = ""
+        for msg in chat_history[-10:]:
+            role_label = "Student" if msg["role"] == "student" else "Nevo"
+            history_text += f"{role_label}: {msg['content']}\n"
+
+        prompt = NEVO_CHAT_PROMPT.format(
+            learning_style=profile_context["learning_style"],
+            reading_level=profile_context["reading_level"],
+            complexity_tolerance=profile_context["complexity_tolerance"],
+            interests=", ".join(profile_context["interests"][:5]) if profile_context["interests"] else "general topics",
+            lesson_context=lesson_context[:2000] if lesson_context else "No specific lesson context.",
+            chat_history=history_text if history_text else "No previous messages.",
+            question=question,
+        )
+
+        try:
+            response = await self._generate_content(prompt)
+            return response.strip()
+
+        except Exception as e:
+            raise AIServiceError(
+                message=f"Failed to generate chat response: {str(e)}",
                 model=self.model,
             )

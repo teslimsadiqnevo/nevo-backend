@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.application.common.unit_of_work import IUnitOfWork
-from src.application.features.students.queries import GetStudentProfileQuery
+from src.application.features.students.queries import GetStudentProfileQuery, GetStudentDashboardQuery
 from src.application.features.students.commands import SetPinCommand
 from src.application.features.progress.queries import GetStudentProgressQuery
 from src.application.features.auth.dtos import SetPinInput
@@ -20,10 +20,74 @@ from src.presentation.api.v1.dependencies import (
 from src.presentation.schemas.student import (
     StudentProfileResponse,
     StudentProgressResponse,
+    StudentDashboardResponse,
 )
 from src.presentation.schemas.auth import SetPinRequest, SetPinResponse
 
 router = APIRouter()
+
+
+@router.get(
+    "/me/dashboard",
+    response_model=StudentDashboardResponse,
+    summary="Get student home dashboard",
+    description="""
+Get all data needed for the student Home page in a single call.
+
+**Requires:** Student role.
+
+**Returns:**
+- Student's first name for greeting
+- Current/last lesson in progress with step progress
+- Recent teacher feedback messages
+- Learning stats (lessons completed, streak, average score)
+- Attention span for break timer
+    """,
+    responses={
+        200: {"description": "Student dashboard data"},
+        404: {"description": "Student not found"},
+    },
+)
+async def get_my_dashboard(
+    current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Get current student's home dashboard."""
+    try:
+        query = GetStudentDashboardQuery(uow)
+        result = await query.execute(current_user.id)
+
+        return StudentDashboardResponse(
+            student_name=result.student_name,
+            current_lesson={
+                "lesson_id": str(result.current_lesson.lesson_id),
+                "title": result.current_lesson.title,
+                "subject": result.current_lesson.subject,
+                "topic": result.current_lesson.topic,
+                "current_step": result.current_lesson.current_step,
+                "total_steps": result.current_lesson.total_steps,
+            } if result.current_lesson else None,
+            recent_feedback=[
+                {
+                    "message": fb.message,
+                    "teacher_name": fb.teacher_name,
+                    "created_at": fb.created_at.isoformat(),
+                }
+                for fb in result.recent_feedback
+            ],
+            stats={
+                "total_lessons_completed": result.stats.total_lessons_completed,
+                "current_streak_days": result.stats.current_streak_days,
+                "average_score": result.stats.average_score,
+            },
+            attention_span_minutes=result.attention_span_minutes,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
 
 
 @router.get(

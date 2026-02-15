@@ -13,6 +13,8 @@ from src.domain.entities.neuro_profile import NeuroProfile
 from src.domain.entities.assessment import Assessment
 from src.domain.entities.progress import StudentProgress
 from src.domain.entities.training_data import TrainingDataLog
+from src.domain.entities.teacher_feedback import TeacherFeedback
+from src.domain.entities.chat_message import ChatMessage
 from src.domain.value_objects.pagination import PaginationParams, PaginatedResult
 
 
@@ -328,4 +330,41 @@ class ITrainingDataRepository(ABC):
         batch_id: str,
     ) -> int:
         """Mark a batch of logs as processed."""
+        pass
+
+
+class ITeacherFeedbackRepository(ABC):
+    """Teacher feedback repository interface."""
+
+    @abstractmethod
+    async def create(self, feedback: TeacherFeedback) -> TeacherFeedback:
+        """Create a new feedback."""
+        pass
+
+    @abstractmethod
+    async def get_by_id(self, feedback_id: UUID) -> Optional[TeacherFeedback]:
+        """Get feedback by ID."""
+        pass
+
+    @abstractmethod
+    async def list_by_student(
+        self, student_id: UUID, limit: int = 5
+    ) -> List[TeacherFeedback]:
+        """List recent feedback for a student."""
+        pass
+
+
+class IChatMessageRepository(ABC):
+    """Chat message repository interface."""
+
+    @abstractmethod
+    async def create(self, message: ChatMessage) -> ChatMessage:
+        """Create a new chat message."""
+        pass
+
+    @abstractmethod
+    async def list_by_student(
+        self, student_id: UUID, limit: int = 50
+    ) -> List[ChatMessage]:
+        """List recent chat messages for a student."""
         pass

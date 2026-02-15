@@ -82,6 +82,28 @@ class IAIService(ABC):
         """
         pass
 
+    @abstractmethod
+    async def generate_chat_response(
+        self,
+        question: str,
+        profile: NeuroProfile,
+        chat_history: List[Dict[str, str]],
+        lesson_context: Optional[str] = None,
+    ) -> str:
+        """
+        Generate a conversational response as Nevo AI tutor.
+
+        Args:
+            question: Student's question
+            profile: Student's neuro profile
+            chat_history: Recent chat messages [{"role": ..., "content": ...}]
+            lesson_context: Optional current lesson text for context
+
+        Returns:
+            Nevo's response text
+        """
+        pass
+
 
 class IStorageService(ABC):
     """Storage service interface for file operations."""

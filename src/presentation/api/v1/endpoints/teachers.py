@@ -5,8 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.application.common.unit_of_work import IUnitOfWork
+from src.application.features.students.commands import SendFeedbackCommand
+from src.application.features.students.dtos import SendFeedbackInput
 from src.core.config.constants import UserRole
-from src.core.exceptions import EntityNotFoundError
+from src.core.exceptions import EntityNotFoundError, ValidationError
 from src.domain.value_objects.pagination import PaginationParams
 from src.presentation.api.v1.dependencies import (
     get_current_active_user,
@@ -17,6 +19,10 @@ from src.presentation.api.v1.dependencies import (
 from src.presentation.schemas.teacher import (
     TeacherDashboardResponse,
     StudentListResponse,
+)
+from src.presentation.schemas.student import (
+    SendFeedbackRequest,
+    SendFeedbackResponse,
 )
 
 router = APIRouter()
@@ -144,4 +150,60 @@ async def list_students(
             page=result.page,
             page_size=result.page_size,
             total_pages=result.total_pages,
+        )
+
+
+@router.post(
+    "/feedback",
+    response_model=SendFeedbackResponse,
+    summary="Send feedback to a student",
+    description="""
+Send an encouragement message to a student.
+
+**Requires:** Teacher role.
+
+**Use cases:**
+- Sending motivational messages after lesson completion
+- Providing encouragement for struggling students
+- Celebrating milestones
+
+Messages appear on the student's Home dashboard.
+    """,
+    responses={
+        200: {"description": "Feedback sent successfully"},
+        400: {"description": "Invalid request (not a teacher or invalid student)"},
+        404: {"description": "Student not found"},
+    },
+)
+async def send_feedback(
+    request: SendFeedbackRequest,
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Send encouragement feedback to a student."""
+    try:
+        command = SendFeedbackCommand(uow)
+        result = await command.execute(
+            SendFeedbackInput(
+                teacher_id=current_user.id,
+                student_id=UUID(request.student_id),
+                message=request.message,
+                lesson_id=UUID(request.lesson_id) if request.lesson_id else None,
+            )
+        )
+
+        return SendFeedbackResponse(
+            feedback_id=str(result.feedback_id),
+            message=result.message,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
         )

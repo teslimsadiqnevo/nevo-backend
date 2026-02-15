@@ -51,3 +51,61 @@ class StudentProgressResponse(BaseModel):
     last_activity_at: Optional[str] = Field(None, description="Last activity timestamp")
     lessons: List[Dict[str, Any]] = Field(..., description="Lesson progress list")
     skills: List[Dict[str, Any]] = Field(..., description="Skill progress list")
+
+
+class CurrentLessonSchema(BaseModel):
+    """Current lesson card schema."""
+
+    lesson_id: str
+    title: str
+    subject: Optional[str] = None
+    topic: Optional[str] = None
+    current_step: int
+    total_steps: int
+
+
+class RecentFeedbackSchema(BaseModel):
+    """Recent teacher feedback schema."""
+
+    message: str
+    teacher_name: str
+    created_at: str
+
+
+class DashboardStatsSchema(BaseModel):
+    """Dashboard statistics schema."""
+
+    total_lessons_completed: int
+    current_streak_days: int
+    average_score: float
+
+
+class StudentDashboardResponse(BaseModel):
+    """Student home dashboard response."""
+
+    student_name: str = Field(..., description="Student's first name")
+    current_lesson: Optional[CurrentLessonSchema] = Field(
+        None, description="Current/last lesson in progress"
+    )
+    recent_feedback: List[RecentFeedbackSchema] = Field(
+        ..., description="Recent teacher feedback messages"
+    )
+    stats: DashboardStatsSchema = Field(..., description="Learning statistics")
+    attention_span_minutes: int = Field(
+        ..., description="Recommended break timer duration"
+    )
+
+
+class SendFeedbackRequest(BaseModel):
+    """Send feedback request schema."""
+
+    student_id: str = Field(..., description="Target student ID")
+    message: str = Field(..., min_length=1, max_length=500, description="Feedback message")
+    lesson_id: Optional[str] = Field(None, description="Related lesson ID (optional)")
+
+
+class SendFeedbackResponse(BaseModel):
+    """Send feedback response schema."""
+
+    feedback_id: str = Field(..., description="Created feedback ID")
+    message: str = Field(..., description="Status message")

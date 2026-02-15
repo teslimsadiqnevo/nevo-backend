@@ -60,3 +60,62 @@ class AddStudentInput:
     school_id: UUID
     teacher_id: Optional[UUID] = None
     password: Optional[str] = None
+
+
+@dataclass
+class CurrentLessonOutput:
+    """Output DTO for the current lesson card on the dashboard."""
+
+    lesson_id: UUID
+    title: str
+    subject: Optional[str]
+    topic: Optional[str]
+    current_step: int
+    total_steps: int
+
+
+@dataclass
+class RecentFeedbackOutput:
+    """Output DTO for a recent teacher feedback item."""
+
+    message: str
+    teacher_name: str
+    created_at: datetime
+
+
+@dataclass
+class DashboardStatsOutput:
+    """Output DTO for dashboard statistics."""
+
+    total_lessons_completed: int
+    current_streak_days: int
+    average_score: float
+
+
+@dataclass
+class StudentDashboardOutput:
+    """Output DTO for the student home dashboard."""
+
+    student_name: str
+    current_lesson: Optional[CurrentLessonOutput]
+    recent_feedback: List[RecentFeedbackOutput]
+    stats: DashboardStatsOutput
+    attention_span_minutes: int
+
+
+@dataclass(frozen=True)
+class SendFeedbackInput:
+    """Input DTO for sending teacher feedback."""
+
+    teacher_id: UUID
+    student_id: UUID
+    message: str
+    lesson_id: Optional[UUID] = None
+
+
+@dataclass
+class SendFeedbackOutput:
+    """Output DTO for send feedback result."""
+
+    feedback_id: UUID
+    message: str

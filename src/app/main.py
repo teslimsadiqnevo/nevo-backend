@@ -72,8 +72,25 @@ When a student calls `/play`, the AI:
         """,
     },
     {
+        "name": "Chat",
+        "description": """
+**Ask Nevo AI Tutor**
+
+Students can chat with Nevo, an AI-powered learning buddy that adapts responses to their NeuroProfile.
+
+### Endpoints
+- `POST /chat/ask` - Ask Nevo a question (saves both question and response)
+- `GET /chat/history` - Retrieve recent conversation history
+
+### Features
+- Personalized responses based on learning style and reading level
+- Optional lesson context for lesson-specific help
+- Conversation memory (recent messages used as context)
+        """,
+    },
+    {
         "name": "Students",
-        "description": "Student profile and dashboard endpoints. View student progress, profile, and learning statistics.",
+        "description": "Student profile, dashboard, and learning statistics. Includes the Home dashboard endpoint.",
     },
     {
         "name": "Teachers",
