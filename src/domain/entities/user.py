@@ -35,6 +35,8 @@ class User:
     nevo_id: Optional[str] = None
     # Bcrypt hash of the 4-digit PIN
     pin_hash: Optional[str] = None
+    # Class code for teacher connections (e.g., "NEVO-CLASS-4K7")
+    class_code: Optional[str] = None
 
     @property
     def has_nevo_id(self) -> bool:

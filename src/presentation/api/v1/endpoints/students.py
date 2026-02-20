@@ -8,9 +8,18 @@ from src.application.common.unit_of_work import IUnitOfWork
 from src.application.features.students.queries import GetStudentProfileQuery, GetStudentDashboardQuery
 from src.application.features.students.commands import SetPinCommand
 from src.application.features.progress.queries import GetStudentProgressQuery
+from src.application.features.connections.queries import GetStudentConnectionsQuery
+from src.application.features.connections.commands import (
+    SendConnectionRequestCommand,
+    RemoveConnectionCommand,
+)
+from src.application.features.connections.dtos import (
+    SendConnectionRequestInput,
+    RemoveConnectionInput,
+)
 from src.application.features.auth.dtos import SetPinInput
 from src.core.config.constants import UserRole
-from src.core.exceptions import EntityNotFoundError, ValidationError
+from src.core.exceptions import EntityNotFoundError, ValidationError, ConflictError
 from src.presentation.api.v1.dependencies import (
     get_current_active_user,
     get_uow,
@@ -21,6 +30,11 @@ from src.presentation.schemas.student import (
     StudentProfileResponse,
     StudentProgressResponse,
     StudentDashboardResponse,
+)
+from src.presentation.schemas.connection import (
+    StudentConnectionsResponse,
+    SendConnectionRequest,
+    SendConnectionResponse,
 )
 from src.presentation.schemas.auth import SetPinRequest, SetPinResponse
 
@@ -252,6 +266,159 @@ async def set_my_pin(
             message=result.message,
             nevo_id=result.nevo_id,
         )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.get(
+    "/me/connections",
+    response_model=StudentConnectionsResponse,
+    summary="Get my connections",
+    description="""
+Get the student's teacher connections (pending and accepted).
+
+**Requires:** Student role.
+
+**Returns:**
+- Student's Nevo ID
+- Pending connection requests
+- Connected teachers with name and subject
+    """,
+    responses={
+        200: {"description": "Student's connections"},
+        404: {"description": "Student not found"},
+    },
+)
+async def get_my_connections(
+    current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Get current student's teacher connections."""
+    try:
+        query = GetStudentConnectionsQuery(uow)
+        result = await query.execute(current_user.id)
+
+        return StudentConnectionsResponse(
+            nevo_id=result.nevo_id,
+            pending=[
+                {
+                    "connection_id": str(c.connection_id),
+                    "teacher_name": c.teacher_name,
+                    "subject": c.subject,
+                    "created_at": c.created_at.isoformat(),
+                }
+                for c in result.pending
+            ],
+            connected=[
+                {
+                    "connection_id": str(c.connection_id),
+                    "teacher_name": c.teacher_name,
+                    "subject": c.subject,
+                    "created_at": c.created_at.isoformat(),
+                }
+                for c in result.connected
+            ],
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+
+
+@router.post(
+    "/me/connections",
+    response_model=SendConnectionResponse,
+    summary="Send connection request",
+    description="""
+Send a connection request to a teacher using their class code.
+
+**Requires:** Student role.
+
+**Input:** Teacher's class code (e.g. NEVO-CLASS-4K7)
+    """,
+    responses={
+        200: {"description": "Connection request sent"},
+        404: {"description": "Teacher not found for class code"},
+        409: {"description": "Already connected or request pending"},
+    },
+)
+async def send_connection_request(
+    request: SendConnectionRequest,
+    current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Send a connection request to a teacher."""
+    try:
+        command = SendConnectionRequestCommand(uow)
+        result = await command.execute(
+            SendConnectionRequestInput(
+                student_id=current_user.id,
+                class_code=request.class_code,
+            )
+        )
+
+        return SendConnectionResponse(
+            connection_id=str(result.connection_id),
+            teacher_name=result.teacher_name,
+            status=result.status,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except ConflictError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.delete(
+    "/me/connections/{connection_id}",
+    summary="Remove a connection",
+    description="""
+Remove a teacher connection (pending or accepted).
+
+**Requires:** Student role.
+    """,
+    responses={
+        200: {"description": "Connection removed"},
+        404: {"description": "Connection not found"},
+    },
+)
+async def remove_connection(
+    connection_id: UUID,
+    current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Remove a student's connection."""
+    try:
+        command = RemoveConnectionCommand(uow)
+        await command.execute(
+            RemoveConnectionInput(
+                student_id=current_user.id,
+                connection_id=connection_id,
+            )
+        )
+        return {"message": "Connection removed"}
 
     except EntityNotFoundError as e:
         raise HTTPException(

@@ -41,6 +41,7 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             linked_student_ids=model.linked_student_ids or [],
             nevo_id=model.nevo_id,
             pin_hash=model.pin_hash,
+            class_code=model.class_code,
         )
 
     def _to_model(self, entity: User) -> UserModel:
@@ -64,6 +65,7 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             linked_student_ids=entity.linked_student_ids,
             nevo_id=entity.nevo_id,
             pin_hash=entity.pin_hash,
+            class_code=entity.class_code,
         )
 
     async def create(self, user: User) -> User:
@@ -102,6 +104,7 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             model.updated_at = user.updated_at
             model.nevo_id = user.nevo_id
             model.pin_hash = user.pin_hash
+            model.class_code = user.class_code
             await self.session.flush()
             return self._to_entity(model)
         return user
@@ -169,5 +172,20 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
         """Check if a Nevo ID already exists."""
         result = await self.session.execute(
             select(UserModel.id).where(UserModel.nevo_id == nevo_id)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def get_by_class_code(self, class_code: str) -> Optional[User]:
+        """Get teacher by class code."""
+        result = await self.session.execute(
+            select(UserModel).where(UserModel.class_code == class_code)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def exists_by_class_code(self, class_code: str) -> bool:
+        """Check if a class code already exists."""
+        result = await self.session.execute(
+            select(UserModel.id).where(UserModel.class_code == class_code)
         )
         return result.scalar_one_or_none() is not None

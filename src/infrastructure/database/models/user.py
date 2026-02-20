@@ -33,6 +33,8 @@ class UserModel(BaseModel):
     nevo_id = Column(String(10), unique=True, nullable=True, index=True)
     # Bcrypt hash of 4-digit PIN
     pin_hash = Column(String(255), nullable=True)
+    # Class code for teacher connections (e.g., "NEVO-CLASS-4K7")
+    class_code = Column(String(20), unique=True, nullable=True, index=True)
 
     # Relationships
     school = relationship("SchoolModel", back_populates="users")

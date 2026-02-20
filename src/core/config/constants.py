@@ -104,6 +104,14 @@ class ProgressStatus(str, Enum):
     COMPLETED = "completed"
 
 
+class ConnectionStatus(str, Enum):
+    """Student-teacher connection status."""
+
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+
 class QuestionType(str, Enum):
     """Assessment question types."""
 

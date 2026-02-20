@@ -7,6 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from src.application.common.unit_of_work import IUnitOfWork
 from src.application.features.students.commands import SendFeedbackCommand
 from src.application.features.students.dtos import SendFeedbackInput
+from src.application.features.connections.queries import GetTeacherConnectionRequestsQuery
+from src.application.features.connections.commands import (
+    GetOrGenerateClassCodeCommand,
+    RespondToConnectionRequestCommand,
+)
+from src.application.features.connections.dtos import RespondToRequestInput
 from src.core.config.constants import UserRole
 from src.core.exceptions import EntityNotFoundError, ValidationError
 from src.domain.value_objects.pagination import PaginationParams
@@ -23,6 +29,12 @@ from src.presentation.schemas.teacher import (
 from src.presentation.schemas.student import (
     SendFeedbackRequest,
     SendFeedbackResponse,
+)
+from src.presentation.schemas.connection import (
+    ClassCodeResponse,
+    TeacherRequestsResponse,
+    RespondToRequestRequest,
+    RespondToRequestResponse,
 )
 
 router = APIRouter()
@@ -195,6 +207,140 @@ async def send_feedback(
         return SendFeedbackResponse(
             feedback_id=str(result.feedback_id),
             message=result.message,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.get(
+    "/me/class-code",
+    response_model=ClassCodeResponse,
+    summary="Get my class code",
+    description="""
+Get the teacher's class code for student connections.
+Auto-generates one if the teacher doesn't have one yet.
+
+**Requires:** Teacher role.
+
+**Returns:** Class code in format NEVO-CLASS-XXX.
+Students use this code to send connection requests.
+    """,
+    responses={
+        200: {"description": "Teacher's class code"},
+        404: {"description": "Teacher not found"},
+    },
+)
+async def get_my_class_code(
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Get or generate teacher's class code."""
+    try:
+        command = GetOrGenerateClassCodeCommand(uow)
+        result = await command.execute(current_user.id)
+        return ClassCodeResponse(class_code=result.class_code)
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.get(
+    "/me/connection-requests",
+    response_model=TeacherRequestsResponse,
+    summary="Get pending connection requests",
+    description="""
+Get pending connection requests from students.
+
+**Requires:** Teacher role.
+
+**Returns:** List of pending requests with student names.
+    """,
+    responses={
+        200: {"description": "Pending connection requests"},
+        404: {"description": "Teacher not found"},
+    },
+)
+async def get_connection_requests(
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Get pending connection requests from students."""
+    try:
+        query = GetTeacherConnectionRequestsQuery(uow)
+        result = await query.execute(current_user.id)
+
+        return TeacherRequestsResponse(
+            requests=[
+                {
+                    "connection_id": str(r.connection_id),
+                    "student_name": r.student_name,
+                    "created_at": r.created_at.isoformat(),
+                }
+                for r in result.requests
+            ],
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+
+
+@router.patch(
+    "/me/connection-requests/{connection_id}",
+    response_model=RespondToRequestResponse,
+    summary="Accept or reject a connection request",
+    description="""
+Accept or reject a student's connection request.
+
+**Requires:** Teacher role.
+
+**Input:** Action - 'accept' or 'reject'.
+    """,
+    responses={
+        200: {"description": "Connection request updated"},
+        400: {"description": "Invalid action or already responded"},
+        404: {"description": "Connection not found"},
+    },
+)
+async def respond_to_connection_request(
+    connection_id: UUID,
+    request: RespondToRequestRequest,
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Accept or reject a student's connection request."""
+    try:
+        command = RespondToConnectionRequestCommand(uow)
+        result = await command.execute(
+            RespondToRequestInput(
+                teacher_id=current_user.id,
+                connection_id=connection_id,
+                action=request.action,
+            )
+        )
+
+        return RespondToRequestResponse(
+            connection_id=str(result.connection_id),
+            status=result.status,
         )
 
     except EntityNotFoundError as e:

@@ -15,6 +15,8 @@ from src.domain.entities.progress import StudentProgress
 from src.domain.entities.training_data import TrainingDataLog
 from src.domain.entities.teacher_feedback import TeacherFeedback
 from src.domain.entities.chat_message import ChatMessage
+from src.domain.entities.connection import Connection
+from src.core.config.constants import ConnectionStatus
 from src.domain.value_objects.pagination import PaginationParams, PaginatedResult
 
 
@@ -78,6 +80,16 @@ class IUserRepository(ABC):
     @abstractmethod
     async def exists_by_nevo_id(self, nevo_id: str) -> bool:
         """Check if a Nevo ID already exists."""
+        pass
+
+    @abstractmethod
+    async def get_by_class_code(self, class_code: str) -> Optional[User]:
+        """Get teacher by class code."""
+        pass
+
+    @abstractmethod
+    async def exists_by_class_code(self, class_code: str) -> bool:
+        """Check if a class code already exists."""
         pass
 
 
@@ -367,4 +379,47 @@ class IChatMessageRepository(ABC):
         self, student_id: UUID, limit: int = 50
     ) -> List[ChatMessage]:
         """List recent chat messages for a student."""
+        pass
+
+
+class IConnectionRepository(ABC):
+    """Student-teacher connection repository interface."""
+
+    @abstractmethod
+    async def create(self, connection: Connection) -> Connection:
+        """Create a new connection."""
+        pass
+
+    @abstractmethod
+    async def get_by_id(self, connection_id: UUID) -> Optional[Connection]:
+        """Get connection by ID."""
+        pass
+
+    @abstractmethod
+    async def update(self, connection: Connection) -> Connection:
+        """Update connection."""
+        pass
+
+    @abstractmethod
+    async def delete(self, connection_id: UUID) -> bool:
+        """Delete connection."""
+        pass
+
+    @abstractmethod
+    async def list_by_student(self, student_id: UUID) -> List[Connection]:
+        """List all connections for a student."""
+        pass
+
+    @abstractmethod
+    async def list_by_teacher(
+        self, teacher_id: UUID, status: Optional[ConnectionStatus] = None
+    ) -> List[Connection]:
+        """List connections for a teacher, optionally filtered by status."""
+        pass
+
+    @abstractmethod
+    async def get_by_student_and_teacher(
+        self, student_id: UUID, teacher_id: UUID
+    ) -> Optional[Connection]:
+        """Get connection between a specific student and teacher."""
         pass

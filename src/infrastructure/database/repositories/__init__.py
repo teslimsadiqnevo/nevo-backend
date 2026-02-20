@@ -10,6 +10,7 @@ from src.infrastructure.database.repositories.progress_repository import Progres
 from src.infrastructure.database.repositories.training_data_repository import TrainingDataRepository
 from src.infrastructure.database.repositories.teacher_feedback_repository import TeacherFeedbackRepository
 from src.infrastructure.database.repositories.chat_message_repository import ChatMessageRepository
+from src.infrastructure.database.repositories.connection_repository import ConnectionRepository
 
 __all__ = [
     "UserRepository",
@@ -22,4 +23,5 @@ __all__ = [
     "TrainingDataRepository",
     "TeacherFeedbackRepository",
     "ChatMessageRepository",
+    "ConnectionRepository",
 ]
