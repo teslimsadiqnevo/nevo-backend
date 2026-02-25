@@ -17,6 +17,9 @@ from src.application.features.connections.dtos import (
     SendConnectionRequestInput,
     RemoveConnectionInput,
 )
+from src.application.features.profile.queries import GetProfileSettingsQuery
+from src.application.features.profile.commands import UpdateAccessibilityCommand
+from src.application.features.profile.dtos import UpdateAccessibilityInput
 from src.application.features.auth.dtos import SetPinInput
 from src.core.config.constants import UserRole
 from src.core.exceptions import EntityNotFoundError, ValidationError, ConflictError
@@ -37,6 +40,11 @@ from src.presentation.schemas.connection import (
     SendConnectionResponse,
 )
 from src.presentation.schemas.auth import SetPinRequest, SetPinResponse
+from src.presentation.schemas.profile import (
+    AccessibilitySettings,
+    ProfileSettingsResponse,
+    UpdateAccessibilityRequest,
+)
 
 router = APIRouter()
 
@@ -275,6 +283,108 @@ async def set_my_pin(
     except ValidationError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.get(
+    "/me/settings",
+    response_model=ProfileSettingsResponse,
+    summary="Get my profile settings",
+    description="""
+Get the current student's profile info and accessibility preferences.
+
+**Requires:** Student role.
+
+**Returns:**
+- Student name and role
+- Nevo ID and PIN status
+- Accessibility toggles (voice guidance, larger text, extra spacing)
+    """,
+    responses={
+        200: {"description": "Student profile settings"},
+        404: {"description": "Student not found"},
+    },
+)
+async def get_my_settings(
+    current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Get current student's profile settings."""
+    try:
+        query = GetProfileSettingsQuery(uow)
+        result = await query.execute(current_user.id)
+
+        return ProfileSettingsResponse(
+            student_name=result.student_name,
+            role=result.role,
+            nevo_id=result.nevo_id,
+            has_pin=result.has_pin,
+            accessibility=AccessibilitySettings(
+                voice_guidance=result.voice_guidance,
+                large_text=result.large_text,
+                extra_spacing=result.extra_spacing,
+            ),
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+
+
+@router.patch(
+    "/me/settings",
+    response_model=ProfileSettingsResponse,
+    summary="Update my accessibility settings",
+    description="""
+Update accessibility preferences. Only provided fields are updated.
+
+**Requires:** Student role.
+
+**Updatable fields:**
+- `voice_guidance` — enable/disable voice guidance
+- `large_text` — enable/disable larger text
+- `extra_spacing` — enable/disable extra spacing
+    """,
+    responses={
+        200: {"description": "Updated profile settings"},
+        404: {"description": "Student not found"},
+    },
+)
+async def update_my_settings(
+    request: UpdateAccessibilityRequest,
+    current_user: CurrentUser = Depends(require_role([UserRole.STUDENT])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Update current student's accessibility settings."""
+    try:
+        command = UpdateAccessibilityCommand(uow)
+        result = await command.execute(
+            UpdateAccessibilityInput(
+                user_id=current_user.id,
+                voice_guidance=request.voice_guidance,
+                large_text=request.large_text,
+                extra_spacing=request.extra_spacing,
+            )
+        )
+
+        return ProfileSettingsResponse(
+            student_name=result.student_name,
+            role=result.role,
+            nevo_id=result.nevo_id,
+            has_pin=result.has_pin,
+            accessibility=AccessibilitySettings(
+                voice_guidance=result.voice_guidance,
+                large_text=result.large_text,
+                extra_spacing=result.extra_spacing,
+            ),
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=e.message,
         )
 

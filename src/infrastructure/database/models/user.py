@@ -36,6 +36,11 @@ class UserModel(BaseModel):
     # Class code for teacher connections (e.g., "NEVO-CLASS-4K7")
     class_code = Column(String(20), unique=True, nullable=True, index=True)
 
+    # Accessibility preferences
+    voice_guidance = Column(Boolean, default=False, server_default="false", nullable=False)
+    large_text = Column(Boolean, default=False, server_default="false", nullable=False)
+    extra_spacing = Column(Boolean, default=False, server_default="false", nullable=False)
+
     # Relationships
     school = relationship("SchoolModel", back_populates="users")
     neuro_profile = relationship("NeuroProfileModel", back_populates="user", uselist=False)

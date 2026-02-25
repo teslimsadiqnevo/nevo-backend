@@ -38,6 +38,11 @@ class User:
     # Class code for teacher connections (e.g., "NEVO-CLASS-4K7")
     class_code: Optional[str] = None
 
+    # Accessibility preferences
+    voice_guidance: bool = False
+    large_text: bool = False
+    extra_spacing: bool = False
+
     @property
     def has_nevo_id(self) -> bool:
         """Check if student has a Nevo ID assigned."""

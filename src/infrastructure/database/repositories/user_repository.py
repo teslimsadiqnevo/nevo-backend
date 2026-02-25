@@ -42,6 +42,9 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             nevo_id=model.nevo_id,
             pin_hash=model.pin_hash,
             class_code=model.class_code,
+            voice_guidance=model.voice_guidance,
+            large_text=model.large_text,
+            extra_spacing=model.extra_spacing,
         )
 
     def _to_model(self, entity: User) -> UserModel:
@@ -66,6 +69,9 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             nevo_id=entity.nevo_id,
             pin_hash=entity.pin_hash,
             class_code=entity.class_code,
+            voice_guidance=entity.voice_guidance,
+            large_text=entity.large_text,
+            extra_spacing=entity.extra_spacing,
         )
 
     async def create(self, user: User) -> User:
@@ -105,6 +111,9 @@ class UserRepository(BaseRepository[UserModel, User], IUserRepository):
             model.nevo_id = user.nevo_id
             model.pin_hash = user.pin_hash
             model.class_code = user.class_code
+            model.voice_guidance = user.voice_guidance
+            model.large_text = user.large_text
+            model.extra_spacing = user.extra_spacing
             await self.session.flush()
             return self._to_entity(model)
         return user
