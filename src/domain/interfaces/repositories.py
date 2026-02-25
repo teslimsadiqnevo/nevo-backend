@@ -107,6 +107,11 @@ class ISchoolRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_by_name(self, name: str) -> Optional[School]:
+        """Get school by name (case-insensitive)."""
+        pass
+
+    @abstractmethod
     async def update(self, school: School) -> School:
         """Update school."""
         pass

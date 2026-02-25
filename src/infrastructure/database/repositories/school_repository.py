@@ -3,7 +3,7 @@
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.school import School
@@ -76,6 +76,14 @@ class SchoolRepository(BaseRepository[SchoolModel, School], ISchoolRepository):
     async def get_by_id(self, school_id: UUID) -> Optional[School]:
         """Get school by ID."""
         model = await self._get_by_id(school_id)
+        return self._to_entity(model) if model else None
+
+    async def get_by_name(self, name: str) -> Optional[School]:
+        """Get school by name (case-insensitive)."""
+        result = await self.session.execute(
+            select(SchoolModel).where(func.lower(SchoolModel.name) == name.lower())
+        )
+        model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
     async def update(self, school: School) -> School:

@@ -8,15 +8,24 @@ from src.application.features.auth.commands import (
     RegisterCommand,
     RefreshTokenCommand,
     NevoIdLoginCommand,
+    RegisterTeacherCommand,
+    ForgotPasswordCommand,
+    ResetPasswordCommand,
+    RegisterSchoolAdminCommand,
 )
 from src.application.features.auth.dtos import (
     LoginInput,
     RegisterInput,
     RefreshTokenInput,
     NevoIdLoginInput,
+    TeacherSignUpInput,
+    ForgotPasswordInput,
+    ResetPasswordInput,
+    SchoolAdminSignUpInput,
 )
 from src.core.exceptions import AuthenticationError, ConflictError, ValidationError
-from src.presentation.api.v1.dependencies import get_uow
+from src.domain.interfaces.services import IEmailService
+from src.presentation.api.v1.dependencies import get_uow, get_email_service
 from src.presentation.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -25,6 +34,14 @@ from src.presentation.schemas.auth import (
     RefreshTokenRequest,
     RefreshTokenResponse,
     NevoIdLoginRequest,
+    TeacherSignUpRequest,
+    TeacherSignUpResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+    SchoolAdminSignUpRequest,
+    SchoolAdminSignUpResponse,
 )
 
 router = APIRouter()
@@ -271,5 +288,212 @@ async def login_nevo_id(
     except AuthenticationError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.message,
+        )
+
+
+@router.post(
+    "/register/teacher",
+    response_model=TeacherSignUpResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Teacher sign-up",
+    description="""
+Create a teacher account in one step.
+
+**What happens:**
+1. School is found by name (case-insensitive) or created automatically
+2. Teacher account is created with the provided credentials
+3. A class code is auto-generated (e.g. `NEVO-CLASS-4K7`)
+4. JWT tokens are returned so the teacher can immediately access the dashboard
+
+**No school_id needed** — just provide the school name.
+    """,
+    responses={
+        201: {"description": "Teacher registered, returns tokens and class code"},
+        400: {"description": "Validation error (school at capacity)"},
+        409: {"description": "Email already exists"},
+    },
+)
+async def register_teacher(
+    request: TeacherSignUpRequest,
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Register a new teacher with automatic school lookup/creation."""
+    try:
+        command = RegisterTeacherCommand(uow)
+        result = await command.execute(
+            TeacherSignUpInput(
+                full_name=request.full_name,
+                school_name=request.school_name,
+                email=request.email,
+                password=request.password,
+            )
+        )
+
+        return TeacherSignUpResponse(
+            token=result.access_token,
+            refresh_token=result.refresh_token,
+            user={
+                "id": str(result.user_id),
+                "email": result.email,
+                "role": "teacher",
+                "name": result.name,
+                "school_id": str(result.school_id),
+                "school_name": result.school_name,
+            },
+            class_code=result.class_code,
+        )
+
+    except ConflictError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    summary="Request password reset",
+    description="""
+Send a password reset email to the user.
+
+**Security:** Always returns a success message regardless of whether the email
+exists — this prevents email enumeration attacks.
+
+**Flow:**
+1. User enters their email
+2. If the email exists, a reset link is sent (valid for 1 hour)
+3. The link points to `{FRONTEND_URL}/reset-password?token=...`
+4. User clicks the link and submits a new password via `POST /auth/reset-password`
+    """,
+    responses={
+        200: {"description": "Reset email sent (if account exists)"},
+    },
+)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    uow: IUnitOfWork = Depends(get_uow),
+    email_service: IEmailService = Depends(get_email_service),
+):
+    """Send password reset email."""
+    command = ForgotPasswordCommand(uow, email_service)
+    await command.execute(ForgotPasswordInput(email=request.email))
+
+    return ForgotPasswordResponse(
+        message="If an account with this email exists, a password reset link has been sent."
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=ResetPasswordResponse,
+    summary="Reset password with token",
+    description="""
+Reset user's password using the token from the reset email.
+
+**Token:** The JWT token received via email link (valid for 1 hour).
+
+**Flow:**
+1. Extract `token` from the URL query parameter on the frontend
+2. Submit the token along with the new password
+3. On success, redirect the user to the login page
+    """,
+    responses={
+        200: {"description": "Password reset successfully"},
+        401: {"description": "Invalid or expired reset token"},
+        400: {"description": "Validation error (password too short)"},
+    },
+)
+async def reset_password(
+    request: ResetPasswordRequest,
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Reset password using reset token."""
+    try:
+        command = ResetPasswordCommand(uow)
+        await command.execute(
+            ResetPasswordInput(
+                reset_token=request.reset_token,
+                new_password=request.new_password,
+            )
+        )
+
+        return ResetPasswordResponse(
+            message="Password has been reset successfully. You can now log in."
+        )
+
+    except AuthenticationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.post(
+    "/register/school-admin",
+    response_model=SchoolAdminSignUpResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Set up a new school workspace",
+    description="""
+Create a school admin account and a new school workspace in one step.
+
+**What happens:**
+1. A new school is created with the provided name and optional address details
+2. A school admin account is created with the provided credentials
+3. JWT tokens are returned so the admin can immediately access the dashboard
+
+**Use this for the "Set up a new school workspace" flow.**
+    """,
+    responses={
+        201: {"description": "School workspace created, returns tokens and school info"},
+        409: {"description": "Email already exists"},
+    },
+)
+async def register_school_admin(
+    request: SchoolAdminSignUpRequest,
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Register a new school admin with automatic school creation."""
+    try:
+        command = RegisterSchoolAdminCommand(uow)
+        result = await command.execute(
+            SchoolAdminSignUpInput(
+                full_name=request.full_name,
+                school_name=request.school_name,
+                email=request.email,
+                password=request.password,
+                school_address=request.school_address,
+                school_city=request.school_city,
+                school_state=request.school_state,
+            )
+        )
+
+        return SchoolAdminSignUpResponse(
+            token=result.access_token,
+            refresh_token=result.refresh_token,
+            user={
+                "id": str(result.user_id),
+                "email": result.email,
+                "role": "school_admin",
+                "name": result.name,
+                "school_id": str(result.school_id),
+                "school_name": result.school_name,
+            },
+        )
+
+    except ConflictError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
             detail=e.message,
         )

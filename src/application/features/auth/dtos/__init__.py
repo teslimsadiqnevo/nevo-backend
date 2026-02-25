@@ -14,6 +14,14 @@ from src.application.features.auth.dtos.auth_dtos import (
     SetPinInput,
     SetPinOutput,
 )
+from src.application.features.auth.dtos.teacher_signup_dtos import (
+    TeacherSignUpInput,
+    TeacherSignUpOutput,
+)
+from src.application.features.auth.dtos.school_admin_signup_dtos import (
+    SchoolAdminSignUpInput,
+    SchoolAdminSignUpOutput,
+)
 
 __all__ = [
     "LoginInput",
@@ -28,4 +36,8 @@ __all__ = [
     "NevoIdLoginInput",
     "SetPinInput",
     "SetPinOutput",
+    "TeacherSignUpInput",
+    "TeacherSignUpOutput",
+    "SchoolAdminSignUpInput",
+    "SchoolAdminSignUpOutput",
 ]
