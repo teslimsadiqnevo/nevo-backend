@@ -1,6 +1,6 @@
 """AdaptedLesson database model."""
 
-from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import relationship
 
@@ -28,7 +28,7 @@ class AdaptedLessonModel(BaseModel):
 
     # Adaptation metadata
     lesson_title = Column(String(255), nullable=False)
-    adaptation_style = Column(String(255), nullable=True)
+    adaptation_style = Column(Text, nullable=True)
 
     # Content blocks stored as JSON
     content_blocks = Column(JSON, default=list, nullable=False)
