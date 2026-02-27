@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from src.presentation.api.v1.endpoints import (
+    admin,
     auth,
     assessments,
     chat,
@@ -26,3 +27,4 @@ api_router.include_router(students.router, prefix="/students", tags=["Students"]
 api_router.include_router(teachers.router, prefix="/teachers", tags=["Teachers"])
 api_router.include_router(schools.router, prefix="/schools", tags=["Schools"])
 api_router.include_router(progress.router, prefix="/progress", tags=["Progress"])
+api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])

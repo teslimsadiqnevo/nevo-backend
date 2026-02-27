@@ -1,9 +1,9 @@
 """Training data repository implementation."""
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
@@ -134,3 +134,25 @@ class TrainingDataRepository(BaseRepository[TrainingDataLogModel, TrainingDataLo
         )
         await self.session.flush()
         return result.rowcount
+
+    async def list_by_source_type(self, source_type: str, limit: int = 1000) -> List[TrainingDataLog]:
+        """List logs filtered by source type (task type)."""
+        result = await self.session.execute(
+            select(TrainingDataLogModel)
+            .where(TrainingDataLogModel.source_type == source_type)
+            .order_by(TrainingDataLogModel.created_at.desc())
+            .limit(limit)
+        )
+        models = result.scalars().all()
+        return [self._to_entity(m) for m in models]
+
+    async def count_by_source_type(self) -> Dict[str, int]:
+        """Get counts of logs grouped by source_type."""
+        result = await self.session.execute(
+            select(
+                TrainingDataLogModel.source_type,
+                func.count(TrainingDataLogModel.id),
+            )
+            .group_by(TrainingDataLogModel.source_type)
+        )
+        return {row[0]: row[1] for row in result.all()}

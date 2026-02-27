@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     google_api_key: str = Field(default="", description="Google API key for Gemini")
     gemini_model: str = Field(default="gemini-pro", description="Gemini model name")
 
+    # AI - Data Collection for SLM Training
+    ai_logging_enabled: bool = Field(
+        default=True, description="Log AI interactions to training_data_logs for SLM training"
+    )
+
     # AI - Local Model (Ollama)
     local_ai_enabled: bool = Field(
         default=False, description="Enable local AI model (Ollama)"

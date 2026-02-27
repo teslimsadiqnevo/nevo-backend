@@ -17,12 +17,18 @@ def get_cache_service() -> ICacheService:
 
 
 def get_ai_service() -> IAIService:
-    """Get AI service dependency (Gemini or Ollama based on configuration)."""
+    """Get AI service dependency (Gemini or Ollama, with optional logging for SLM training)."""
     if settings.local_ai_enabled:
         from src.infrastructure.external.ai.ollama_service import OllamaAIService
-        return OllamaAIService()
-    from src.infrastructure.external.ai.gemini_service import GeminiAIService
-    return GeminiAIService()
+        inner = OllamaAIService()
+    else:
+        from src.infrastructure.external.ai.gemini_service import GeminiAIService
+        inner = GeminiAIService()
+
+    if settings.ai_logging_enabled:
+        from src.infrastructure.external.ai.logging_ai_service import LoggingAIService
+        return LoggingAIService(inner)
+    return inner
 
 
 def get_storage_service() -> IStorageService:

@@ -426,8 +426,9 @@ def create_app() -> FastAPI:
     # Include API router
     app.include_router(api_router, prefix=settings.api_v1_prefix)
 
-    # Health check endpoint
+    # Health check endpoints
     @app.get("/health", tags=["System"])
+    @app.get(f"{settings.api_v1_prefix}/health", tags=["System"])
     async def health_check():
         """
         Health check endpoint.

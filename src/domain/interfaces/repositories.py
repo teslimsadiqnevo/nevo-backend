@@ -350,6 +350,20 @@ class ITrainingDataRepository(ABC):
         """Mark a batch of logs as processed."""
         pass
 
+    @abstractmethod
+    async def list_by_source_type(
+        self,
+        source_type: str,
+        limit: int = 1000,
+    ) -> List[TrainingDataLog]:
+        """List logs filtered by source type (task type)."""
+        pass
+
+    @abstractmethod
+    async def count_by_source_type(self) -> dict:
+        """Get counts of logs grouped by source_type."""
+        pass
+
 
 class ITeacherFeedbackRepository(ABC):
     """Teacher feedback repository interface."""
