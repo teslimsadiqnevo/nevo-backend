@@ -11,6 +11,7 @@ from src.infrastructure.database.repositories.training_data_repository import Tr
 from src.infrastructure.database.repositories.teacher_feedback_repository import TeacherFeedbackRepository
 from src.infrastructure.database.repositories.chat_message_repository import ChatMessageRepository
 from src.infrastructure.database.repositories.connection_repository import ConnectionRepository
+from src.infrastructure.database.repositories.lesson_assignment_repository import LessonAssignmentRepository
 
 __all__ = [
     "UserRepository",
@@ -24,4 +25,5 @@ __all__ = [
     "TeacherFeedbackRepository",
     "ChatMessageRepository",
     "ConnectionRepository",
+    "LessonAssignmentRepository",
 ]

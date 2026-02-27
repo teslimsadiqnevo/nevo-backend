@@ -15,6 +15,7 @@ from src.infrastructure.database.repositories import (
     TeacherFeedbackRepository,
     ChatMessageRepository,
     ConnectionRepository,
+    LessonAssignmentRepository,
 )
 
 
@@ -37,6 +38,7 @@ class UnitOfWork(IUnitOfWork):
         self.teacher_feedbacks = TeacherFeedbackRepository(self._session)
         self.chat_messages = ChatMessageRepository(self._session)
         self.connections = ConnectionRepository(self._session)
+        self.lesson_assignments = LessonAssignmentRepository(self._session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:

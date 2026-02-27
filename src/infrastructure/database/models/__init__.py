@@ -12,6 +12,7 @@ from src.infrastructure.database.models.training_data import TrainingDataLogMode
 from src.infrastructure.database.models.teacher_feedback import TeacherFeedbackModel
 from src.infrastructure.database.models.chat_message import ChatMessageModel
 from src.infrastructure.database.models.connection import ConnectionModel
+from src.infrastructure.database.models.lesson_assignment import LessonAssignmentModel
 
 __all__ = [
     "BaseModel",
@@ -27,4 +28,5 @@ __all__ = [
     "TeacherFeedbackModel",
     "ChatMessageModel",
     "ConnectionModel",
+    "LessonAssignmentModel",
 ]

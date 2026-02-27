@@ -47,3 +47,47 @@ class TeacherDashboardOutput:
     students_needing_attention: int
     recent_students: List[StudentSummary] = field(default_factory=list)
     lesson_engagement_rate: float = 0.0
+
+
+@dataclass
+class TeacherHomeOutput:
+    """Output DTO for teacher home dashboard cards."""
+
+    teacher_name: str
+    total_classes: int
+    total_lessons_assigned: int
+    students_needing_help: int
+    total_students: int
+    total_lessons: int
+    published_lessons: int
+    draft_lessons: int
+
+
+@dataclass
+class AssignableStudentOutput:
+    """Output DTO for a student that can be assigned a lesson."""
+
+    id: UUID
+    first_name: str
+    last_name: str
+    email: str
+
+
+@dataclass(frozen=True)
+class AssignLessonInput:
+    """Input DTO for assigning a lesson."""
+
+    lesson_id: UUID
+    teacher_id: UUID
+    target: str  # "class" or "individual"
+    student_ids: List[UUID] = field(default_factory=list)
+
+
+@dataclass
+class AssignLessonOutput:
+    """Output DTO for lesson assignment result."""
+
+    lesson_id: UUID
+    assigned_count: int
+    skipped_count: int
+    message: str

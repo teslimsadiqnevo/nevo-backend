@@ -112,6 +112,21 @@ class ConnectionStatus(str, Enum):
     REJECTED = "rejected"
 
 
+class AssignmentStatus(str, Enum):
+    """Lesson assignment status."""
+
+    ASSIGNED = "assigned"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+class AssignmentTarget(str, Enum):
+    """How the lesson was assigned."""
+
+    CLASS = "class"
+    INDIVIDUAL = "individual"
+
+
 class QuestionType(str, Enum):
     """Assessment question types."""
 

@@ -1,9 +1,9 @@
 """Lesson repository implementation."""
 
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -170,3 +170,71 @@ class LessonRepository(BaseRepository[LessonModel, Lesson], ILessonRepository):
             page=pagination.page if pagination else 1,
             page_size=pagination.page_size if pagination else total,
         )
+
+    async def list_by_teacher_filtered(
+        self,
+        teacher_id: UUID,
+        search: Optional[str] = None,
+        status_filter: Optional[LessonStatus] = None,
+        subject_filter: Optional[str] = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+        pagination: Optional[PaginationParams] = None,
+    ) -> PaginatedResult[Lesson]:
+        """List lessons by teacher with search, filter, and sort."""
+        query = (
+            select(LessonModel)
+            .where(LessonModel.teacher_id == teacher_id)
+        )
+
+        if search:
+            search_term = f"%{search}%"
+            query = query.where(
+                or_(
+                    LessonModel.title.ilike(search_term),
+                    LessonModel.subject.ilike(search_term),
+                    LessonModel.topic.ilike(search_term),
+                    LessonModel.description.ilike(search_term),
+                )
+            )
+
+        if status_filter:
+            query = query.where(LessonModel.status == status_filter)
+
+        if subject_filter:
+            query = query.where(LessonModel.subject.ilike(subject_filter))
+
+        # Sort
+        sort_column = getattr(LessonModel, sort_by, LessonModel.created_at)
+        if sort_order == "asc":
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
+        items, total = await self._paginate(query, pagination)
+
+        return PaginatedResult(
+            items=[self._to_entity(m) for m in items],
+            total=total,
+            page=pagination.page if pagination else 1,
+            page_size=pagination.page_size if pagination else total,
+        )
+
+    async def count_by_teacher(self, teacher_id: UUID) -> int:
+        """Count lessons by teacher."""
+        query = select(func.count()).where(
+            LessonModel.teacher_id == teacher_id
+        )
+        result = await self.session.execute(query)
+        return result.scalar() or 0
+
+    async def count_by_teacher_and_status(
+        self, teacher_id: UUID, status: LessonStatus
+    ) -> int:
+        """Count lessons by teacher and status."""
+        query = select(func.count()).where(
+            LessonModel.teacher_id == teacher_id,
+            LessonModel.status == status,
+        )
+        result = await self.session.execute(query)
+        return result.scalar() or 0

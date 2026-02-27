@@ -16,7 +16,8 @@ from src.domain.entities.training_data import TrainingDataLog
 from src.domain.entities.teacher_feedback import TeacherFeedback
 from src.domain.entities.chat_message import ChatMessage
 from src.domain.entities.connection import Connection
-from src.core.config.constants import ConnectionStatus
+from src.domain.entities.lesson_assignment import LessonAssignment
+from src.core.config.constants import ConnectionStatus, AssignmentStatus
 from src.domain.value_objects.pagination import PaginationParams, PaginatedResult
 
 
@@ -427,4 +428,61 @@ class IConnectionRepository(ABC):
         self, student_id: UUID, teacher_id: UUID
     ) -> Optional[Connection]:
         """Get connection between a specific student and teacher."""
+        pass
+
+
+class ILessonAssignmentRepository(ABC):
+    """Lesson assignment repository interface."""
+
+    @abstractmethod
+    async def create(self, assignment: LessonAssignment) -> LessonAssignment:
+        """Create a new lesson assignment."""
+        pass
+
+    @abstractmethod
+    async def get_by_id(self, assignment_id: UUID) -> Optional[LessonAssignment]:
+        """Get assignment by ID."""
+        pass
+
+    @abstractmethod
+    async def update(self, assignment: LessonAssignment) -> LessonAssignment:
+        """Update assignment."""
+        pass
+
+    @abstractmethod
+    async def list_by_teacher(
+        self, teacher_id: UUID, status: Optional[AssignmentStatus] = None
+    ) -> List[LessonAssignment]:
+        """List assignments created by a teacher."""
+        pass
+
+    @abstractmethod
+    async def list_by_student(
+        self, student_id: UUID, status: Optional[AssignmentStatus] = None
+    ) -> List[LessonAssignment]:
+        """List assignments for a student."""
+        pass
+
+    @abstractmethod
+    async def list_by_lesson(self, lesson_id: UUID) -> List[LessonAssignment]:
+        """List all assignments for a lesson."""
+        pass
+
+    @abstractmethod
+    async def get_by_lesson_and_student(
+        self, lesson_id: UUID, student_id: UUID
+    ) -> Optional[LessonAssignment]:
+        """Get assignment for a specific lesson and student."""
+        pass
+
+    @abstractmethod
+    async def count_by_teacher(self, teacher_id: UUID) -> int:
+        """Count total assignments by a teacher."""
+        pass
+
+    @abstractmethod
+    async def bulk_create(
+        self, assignments: List[LessonAssignment]
+    ) -> List[LessonAssignment]:
+        """Create multiple assignments at once."""
         pass

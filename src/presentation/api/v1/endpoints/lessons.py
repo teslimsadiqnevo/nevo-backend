@@ -9,6 +9,9 @@ from src.application.common.unit_of_work import IUnitOfWork
 from src.application.features.lessons.commands import CreateLessonCommand, SubmitFeedbackCommand
 from src.application.features.lessons.queries import GetLessonQuery, ListLessonsQuery, PlayLessonQuery
 from src.application.features.lessons.dtos import CreateLessonInput, SubmitFeedbackInput
+from src.application.features.teachers.queries import ListTeacherLessonsQuery, ListTeacherLessonsInput
+from src.application.features.teachers.commands import PublishLessonCommand, AssignLessonCommand
+from src.application.features.teachers.dtos import AssignLessonInput
 from src.core.config.constants import UserRole
 from src.core.exceptions import AuthorizationError, EntityNotFoundError, ValidationError
 from src.domain.interfaces.services import IAIService, IStorageService
@@ -28,6 +31,13 @@ from src.presentation.schemas.lesson import (
     PlayLessonResponse,
     SubmitFeedbackRequest,
     SubmitFeedbackResponse,
+)
+from src.presentation.schemas.teacher import (
+    TeacherLessonListResponse,
+    TeacherLessonSchema,
+    AssignLessonRequest,
+    AssignLessonResponse,
+    PublishLessonResponse,
 )
 
 router = APIRouter()
@@ -199,6 +209,76 @@ async def list_lessons(
                 "status": l.status,
                 "created_at": l.created_at.isoformat() if l.created_at else None,
             }
+            for l in result.lessons
+        ],
+        total=result.total,
+        page=result.page,
+        page_size=result.page_size,
+        total_pages=result.total_pages,
+    )
+
+
+@router.get(
+    "/teacher/manage",
+    response_model=TeacherLessonListResponse,
+    summary="List teacher lessons with search/filter/sort",
+    description="""
+List the teacher's own lessons with search, filtering, and sorting.
+
+**Requires:** Teacher role.
+
+**Query Parameters:**
+- `search`: Search in title, subject, topic, description (ILIKE)
+- `status`: Filter by lesson status (draft, published, archived)
+- `subject`: Filter by subject
+- `sort_by`: Sort field (created_at, title, status). Default: created_at
+- `sort_order`: Sort direction (asc, desc). Default: desc
+- `page`, `page_size`: Pagination
+    """,
+    responses={
+        200: {"description": "Filtered lesson list with pagination"},
+    },
+)
+async def list_teacher_lessons(
+    search: Optional[str] = Query(None, description="Search term"),
+    lesson_status: Optional[str] = Query(None, alias="status", description="Filter by status"),
+    subject: Optional[str] = Query(None, description="Filter by subject"),
+    sort_by: str = Query("created_at", description="Sort field"),
+    sort_order: str = Query("desc", description="Sort direction (asc/desc)"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """List teacher's lessons with search, filter, and sort."""
+    query = ListTeacherLessonsQuery(uow)
+    result = await query.execute(
+        ListTeacherLessonsInput(
+            teacher_id=current_user.id,
+            search=search,
+            status=lesson_status,
+            subject=subject,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            page=page,
+            page_size=page_size,
+        )
+    )
+
+    return TeacherLessonListResponse(
+        lessons=[
+            TeacherLessonSchema(
+                id=str(l.id),
+                title=l.title,
+                subject=l.subject,
+                topic=l.topic,
+                status=l.status,
+                target_grade_level=l.target_grade_level,
+                estimated_duration_minutes=l.estimated_duration_minutes,
+                created_at=l.created_at,
+                published_at=l.published_at,
+                assignment_count=l.assignment_count,
+            )
             for l in result.lessons
         ],
         total=result.total,
@@ -386,5 +466,122 @@ async def submit_feedback(
     except EntityNotFoundError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+
+
+@router.patch(
+    "/{lesson_id}/publish",
+    response_model=PublishLessonResponse,
+    summary="Publish a lesson",
+    description="""
+Publish a draft lesson, making it available for assignment to students.
+
+**Requires:** Teacher role. Must be the lesson owner.
+
+**Rules:**
+- Only DRAFT lessons can be published
+- Already published or archived lessons will return an error
+    """,
+    responses={
+        200: {"description": "Lesson published successfully"},
+        403: {"description": "Not the lesson owner"},
+        404: {"description": "Lesson not found"},
+        400: {"description": "Lesson cannot be published (wrong status)"},
+    },
+)
+async def publish_lesson(
+    lesson_id: UUID,
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Publish a draft lesson."""
+    try:
+        command = PublishLessonCommand(uow)
+        result = await command.execute(lesson_id, current_user.id)
+
+        return PublishLessonResponse(
+            lesson_id=str(result.lesson_id),
+            status=result.status,
+            message=result.message,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except AuthorizationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.message,
+        )
+
+
+@router.post(
+    "/{lesson_id}/assign",
+    response_model=AssignLessonResponse,
+    summary="Assign lesson to students",
+    description="""
+Assign a published lesson to students.
+
+**Requires:** Teacher role. Must be the lesson owner.
+
+**Target options:**
+- `class`: Assigns to ALL students connected to the teacher
+- `individual`: Assigns to specific students listed in `student_ids`
+
+**Duplicate handling:** If a student is already assigned this lesson, they are skipped.
+    """,
+    responses={
+        200: {"description": "Lesson assigned to students"},
+        403: {"description": "Not the lesson owner"},
+        404: {"description": "Lesson not found"},
+        400: {"description": "Lesson not published or no students"},
+    },
+)
+async def assign_lesson(
+    lesson_id: UUID,
+    request: AssignLessonRequest,
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Assign a lesson to students."""
+    try:
+        command = AssignLessonCommand(uow)
+        result = await command.execute(
+            AssignLessonInput(
+                lesson_id=lesson_id,
+                teacher_id=current_user.id,
+                target=request.target,
+                student_ids=[UUID(sid) for sid in request.student_ids],
+            )
+        )
+
+        return AssignLessonResponse(
+            lesson_id=str(result.lesson_id),
+            assigned_count=result.assigned_count,
+            skipped_count=result.skipped_count,
+            message=result.message,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+    except AuthorizationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.message,
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=e.message,
         )

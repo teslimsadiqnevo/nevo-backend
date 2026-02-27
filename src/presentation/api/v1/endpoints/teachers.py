@@ -13,6 +13,10 @@ from src.application.features.connections.commands import (
     RespondToConnectionRequestCommand,
 )
 from src.application.features.connections.dtos import RespondToRequestInput
+from src.application.features.teachers.queries import (
+    GetTeacherHomeQuery,
+    GetAssignableStudentsQuery,
+)
 from src.core.config.constants import UserRole
 from src.core.exceptions import EntityNotFoundError, ValidationError
 from src.domain.value_objects.pagination import PaginationParams
@@ -24,7 +28,10 @@ from src.presentation.api.v1.dependencies import (
 )
 from src.presentation.schemas.teacher import (
     TeacherDashboardResponse,
+    TeacherHomeResponse,
     StudentListResponse,
+    AssignableStudentsResponse,
+    AssignableStudentSchema,
 )
 from src.presentation.schemas.student import (
     SendFeedbackRequest,
@@ -100,6 +107,88 @@ async def get_teacher_dashboard(
             students_needing_attention=0,
             lesson_engagement_rate=0.0,
         )
+
+
+@router.get(
+    "/home",
+    response_model=TeacherHomeResponse,
+    summary="Get teacher home dashboard",
+    description="""
+Get teacher home dashboard cards with key stats.
+
+**Requires:** Teacher role.
+
+**Returns:**
+- Total classes, lessons assigned, students needing help
+- Lesson counts by status (published, draft)
+- Total connected students
+    """,
+    responses={
+        200: {"description": "Teacher home dashboard data"},
+        404: {"description": "Teacher not found"},
+    },
+)
+async def get_teacher_home(
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Get teacher home dashboard cards."""
+    try:
+        query = GetTeacherHomeQuery(uow)
+        result = await query.execute(current_user.id)
+
+        return TeacherHomeResponse(
+            teacher_name=result.teacher_name,
+            total_classes=result.total_classes,
+            total_lessons_assigned=result.total_lessons_assigned,
+            students_needing_help=result.students_needing_help,
+            total_students=result.total_students,
+            total_lessons=result.total_lessons,
+            published_lessons=result.published_lessons,
+            draft_lessons=result.draft_lessons,
+        )
+
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        )
+
+
+@router.get(
+    "/students/assignable",
+    response_model=AssignableStudentsResponse,
+    summary="Get students for lesson assignment",
+    description="""
+Get a list of students that the teacher can assign lessons to.
+Returns all students with accepted connections to this teacher.
+
+**Requires:** Teacher role.
+    """,
+    responses={
+        200: {"description": "List of assignable students"},
+    },
+)
+async def get_assignable_students(
+    current_user: CurrentUser = Depends(require_role([UserRole.TEACHER])),
+    uow: IUnitOfWork = Depends(get_uow),
+):
+    """Get students that can be assigned lessons."""
+    query = GetAssignableStudentsQuery(uow)
+    students = await query.execute(current_user.id)
+
+    return AssignableStudentsResponse(
+        students=[
+            AssignableStudentSchema(
+                id=str(s.id),
+                first_name=s.first_name,
+                last_name=s.last_name,
+                email=s.email,
+            )
+            for s in students
+        ],
+        total=len(students),
+    )
 
 
 @router.get(

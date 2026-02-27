@@ -1,9 +1,9 @@
 # Nevo API Documentation
 
 > **Version**: 1.0.0
-> **Base URL**: `http://localhost:8000/api/v1`
-> **Swagger UI**: `http://localhost:8000/docs`
-> **ReDoc**: `http://localhost:8000/redoc`
+> **Base URL**: `https://api.nevolearning.com/api/v1`
+> **Swagger UI**: `https://api.nevolearning.com/docs`
+> **ReDoc**: `https://api.nevolearning.com/redoc`
 
 ---
 
@@ -31,7 +31,7 @@
 
 ### Base URL
 ```
-Development: http://localhost:8000/api/v1
+Development: http://localhost:8001/api/v1
 Production:  https://api.nevolearning.com/api/v1
 ```
 
@@ -49,7 +49,7 @@ Authorization: Bearer <access_token>
 ### Quick Test
 ```bash
 # Health check
-curl http://localhost:8000/health
+curl https://api.nevolearning.com/health
 
 # Response
 {
@@ -1223,6 +1223,6 @@ try {
 
 ## Support
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
+- **Swagger UI**: https://api.nevolearning.com/docs
+- **ReDoc**: https://api.nevolearning.com/redoc
+- **OpenAPI JSON**: https://api.nevolearning.com/openapi.json
