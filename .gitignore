@@ -6,6 +6,7 @@ __pycache__/
 *.md
 *.ps1
 test_flow.py
+!NEVO_SLM_ROADMAP.md
 
 # C extensions
 *.so
