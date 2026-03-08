@@ -223,6 +223,15 @@ class IEmailService(ABC):
         """Send email verification link."""
         pass
 
+    @abstractmethod
+    async def send_waitlist_confirmation(
+        self,
+        to: str,
+        name: str,
+    ) -> bool:
+        """Send waitlist confirmation email."""
+        pass
+
 
 class ICacheService(ABC):
     """Cache service interface."""

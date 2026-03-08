@@ -140,3 +140,29 @@ The Nevo Team
 </html>
         """
         return await self.send_email(to, subject, body, html_body)
+
+    async def send_waitlist_confirmation(self, to: str, name: str) -> bool:
+        """Send waitlist confirmation email."""
+        subject = "You're on the Nevo waitlist!"
+        body = f"""
+Hi {name},
+
+Thanks for joining the Nevo waitlist! We're building an AI-powered personalized learning platform designed to help every student learn in the way that works best for them.
+
+You're now on the list, and we'll reach out soon with updates and early access information.
+
+Best regards,
+The Nevo Team
+        """
+        html_body = f"""
+<html>
+<body>
+<h2>You're on the Nevo waitlist!</h2>
+<p>Hi {name},</p>
+<p>Thanks for joining the Nevo waitlist! We're building an AI-powered personalized learning platform designed to help every student learn in the way that works best for them.</p>
+<p>You're now on the list, and we'll reach out soon with updates and early access information.</p>
+<p>Best regards,<br>The Nevo Team</p>
+</body>
+</html>
+        """
+        return await self.send_email(to, subject, body, html_body)

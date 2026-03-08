@@ -9,6 +9,7 @@ from src.domain.entities.adapted_lesson import AdaptedLesson, ContentBlock
 from src.domain.entities.assessment import Assessment, AssessmentQuestion, AssessmentAnswer
 from src.domain.entities.progress import StudentProgress
 from src.domain.entities.training_data import TrainingDataLog
+from src.domain.entities.waitlist import WaitlistEntry
 
 __all__ = [
     "Entity",
@@ -24,4 +25,5 @@ __all__ = [
     "AssessmentAnswer",
     "StudentProgress",
     "TrainingDataLog",
+    "WaitlistEntry",
 ]

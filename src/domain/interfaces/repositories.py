@@ -17,6 +17,7 @@ from src.domain.entities.teacher_feedback import TeacherFeedback
 from src.domain.entities.chat_message import ChatMessage
 from src.domain.entities.connection import Connection
 from src.domain.entities.lesson_assignment import LessonAssignment
+from src.domain.entities.waitlist import WaitlistEntry
 from src.core.config.constants import ConnectionStatus, AssignmentStatus
 from src.domain.value_objects.pagination import PaginationParams, PaginatedResult
 
@@ -499,4 +500,35 @@ class ILessonAssignmentRepository(ABC):
         self, assignments: List[LessonAssignment]
     ) -> List[LessonAssignment]:
         """Create multiple assignments at once."""
+        pass
+
+
+class IWaitlistRepository(ABC):
+    """Waitlist repository interface."""
+
+    @abstractmethod
+    async def create(self, entry: WaitlistEntry) -> WaitlistEntry:
+        """Create a waitlist entry."""
+        pass
+
+    @abstractmethod
+    async def get_by_email(self, email: str) -> Optional[WaitlistEntry]:
+        """Get waitlist entry by email."""
+        pass
+
+    @abstractmethod
+    async def list_all(
+        self, limit: int = 100, offset: int = 0, role: Optional[str] = None
+    ) -> List[WaitlistEntry]:
+        """List waitlist entries with optional role filter."""
+        pass
+
+    @abstractmethod
+    async def count(self) -> int:
+        """Count total waitlist entries."""
+        pass
+
+    @abstractmethod
+    async def count_by_role(self) -> dict:
+        """Get counts grouped by role."""
         pass

@@ -13,6 +13,7 @@ from src.infrastructure.database.models.teacher_feedback import TeacherFeedbackM
 from src.infrastructure.database.models.chat_message import ChatMessageModel
 from src.infrastructure.database.models.connection import ConnectionModel
 from src.infrastructure.database.models.lesson_assignment import LessonAssignmentModel
+from src.infrastructure.database.models.waitlist import WaitlistModel
 
 __all__ = [
     "BaseModel",
@@ -29,4 +30,5 @@ __all__ = [
     "ChatMessageModel",
     "ConnectionModel",
     "LessonAssignmentModel",
+    "WaitlistModel",
 ]

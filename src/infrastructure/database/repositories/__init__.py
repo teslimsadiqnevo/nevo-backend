@@ -12,6 +12,7 @@ from src.infrastructure.database.repositories.teacher_feedback_repository import
 from src.infrastructure.database.repositories.chat_message_repository import ChatMessageRepository
 from src.infrastructure.database.repositories.connection_repository import ConnectionRepository
 from src.infrastructure.database.repositories.lesson_assignment_repository import LessonAssignmentRepository
+from src.infrastructure.database.repositories.waitlist_repository import WaitlistRepository
 
 __all__ = [
     "UserRepository",
@@ -26,4 +27,5 @@ __all__ = [
     "ChatMessageRepository",
     "ConnectionRepository",
     "LessonAssignmentRepository",
+    "WaitlistRepository",
 ]

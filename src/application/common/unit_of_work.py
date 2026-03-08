@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         IChatMessageRepository,
         IConnectionRepository,
         ILessonAssignmentRepository,
+        IWaitlistRepository,
     )
 
 
@@ -35,6 +36,7 @@ class IUnitOfWork(ABC):
     chat_messages: "IChatMessageRepository"
     connections: "IConnectionRepository"
     lesson_assignments: "ILessonAssignmentRepository"
+    waitlist: "IWaitlistRepository"
 
     @abstractmethod
     async def __aenter__(self) -> "IUnitOfWork":
