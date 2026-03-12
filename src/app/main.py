@@ -228,7 +228,7 @@ Nevo is an AI-powered personalized learning platform that adapts educational con
 ## 🚀 Quick Start for Frontend Developers
 
 ### Base URL
-- **Local**: `http://localhost:8000/api/v1`
+- **Local**: `http://localhost:8001/api/v1`
 - **Production**: `https://api.nevolearning.com/api/v1`
 
 ### Authentication
@@ -381,13 +381,16 @@ Use the **"Try it out"** button in Swagger UI below!
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "JWT",
-            "description": "Enter your JWT access token (without 'Bearer ' prefix)"
+            "description": "Enter your JWT access token (without 'Bearer ' prefix)",
         }
     }
 
     # Add servers
     openapi_schema["servers"] = [
-        {"url": "http://localhost:8000", "description": "Local Development"},
+        {
+            "url": f"http://localhost:{settings.port}",
+            "description": "Local Development",
+        },
         {"url": "https://api.nevolearning.com", "description": "Production"},
     ]
 

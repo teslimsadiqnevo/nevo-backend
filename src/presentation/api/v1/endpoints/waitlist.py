@@ -62,13 +62,26 @@ async def join_waitlist(
         await uow.commit()
 
     # Send confirmation email (outside transaction -- don't fail signup if email fails)
+    email_sent = False
     try:
         await email_service.send_waitlist_confirmation(
             to=request.email,
             name=request.name,
         )
+        email_sent = True
     except Exception as e:
-        logger.warning(f"Failed to send waitlist confirmation email to {request.email}: {e}")
+        logger.error(f"Failed to send waitlist confirmation email to {request.email}: {e}", exc_info=True)
+
+    # Update email_sent status in DB using a fresh session
+    from src.infrastructure.database.session import AsyncSessionLocal
+    from sqlalchemy import text
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(
+            text("UPDATE waitlist SET email_sent = :sent WHERE id = CAST(:id AS uuid)"),
+            {"sent": email_sent, "id": str(created.id)},
+        )
+        await session.commit()
 
     return JoinWaitlistResponse(
         message="You're on the Nevo waitlist! Check your email.",
@@ -101,6 +114,7 @@ async def list_waitlist_entries(
                 name=e.name,
                 email=e.email,
                 role=e.role,
+                email_sent=e.email_sent,
                 created_at=e.created_at,
             )
             for e in entries

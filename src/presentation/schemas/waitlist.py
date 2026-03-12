@@ -40,6 +40,7 @@ class WaitlistEntrySchema(BaseModel):
     name: str
     email: str
     role: str
+    email_sent: bool
     created_at: datetime
 
 

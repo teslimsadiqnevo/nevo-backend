@@ -1,6 +1,6 @@
 """Waitlist database model."""
 
-from sqlalchemy import Column, String
+from sqlalchemy import Boolean, Column, String
 
 from src.infrastructure.database.models.base import BaseModel
 
@@ -13,6 +13,7 @@ class WaitlistModel(BaseModel):
     name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True, index=True)
     role = Column(String(50), nullable=False, index=True)
+    email_sent = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self) -> str:
         return f"<Waitlist(id={self.id}, email={self.email}, role={self.role})>"

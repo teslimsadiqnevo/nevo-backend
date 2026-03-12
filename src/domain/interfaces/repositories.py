@@ -529,6 +529,11 @@ class IWaitlistRepository(ABC):
         pass
 
     @abstractmethod
+    async def update(self, entry: WaitlistEntry) -> WaitlistEntry:
+        """Update a waitlist entry."""
+        pass
+
+    @abstractmethod
     async def count_by_role(self) -> dict:
         """Get counts grouped by role."""
         pass

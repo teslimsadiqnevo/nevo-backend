@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # Server
     host: str = Field(default="0.0.0.0", description="Server host")
-    port: int = Field(default=8000, description="Server port")
+    port: int = Field(default=8001, description="Server port")
 
     # Database - Supabase PostgreSQL
     database_url: str = Field(

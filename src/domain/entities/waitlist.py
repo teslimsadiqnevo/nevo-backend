@@ -12,6 +12,7 @@ class WaitlistEntry:
     name: str
     email: str
     role: str  # student, teacher, parent, school_admin
+    email_sent: bool = False
     id: UUID = field(default_factory=uuid4)
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)

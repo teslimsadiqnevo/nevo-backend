@@ -24,6 +24,7 @@ class WaitlistRepository(BaseRepository[WaitlistModel, WaitlistEntry], IWaitlist
             name=model.name,
             email=model.email,
             role=model.role,
+            email_sent=model.email_sent,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
@@ -35,6 +36,7 @@ class WaitlistRepository(BaseRepository[WaitlistModel, WaitlistEntry], IWaitlist
             name=entity.name,
             email=entity.email,
             role=entity.role,
+            email_sent=entity.email_sent,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -44,6 +46,16 @@ class WaitlistRepository(BaseRepository[WaitlistModel, WaitlistEntry], IWaitlist
         model = self._to_model(entry)
         created = await self._create(model)
         return self._to_entity(created)
+
+    async def update(self, entry: WaitlistEntry) -> WaitlistEntry:
+        """Update a waitlist entry."""
+        result = await self.session.execute(
+            select(WaitlistModel).where(WaitlistModel.id == entry.id)
+        )
+        model = result.scalar_one()
+        model.email_sent = entry.email_sent
+        await self.session.flush()
+        return self._to_entity(model)
 
     async def get_by_email(self, email: str) -> Optional[WaitlistEntry]:
         """Get waitlist entry by email."""
