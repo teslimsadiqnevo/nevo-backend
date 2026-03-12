@@ -162,23 +162,39 @@ Send custom emails for any service needs. Supports both single and bulk email se
 
 logger = logging.getLogger(__name__)
 
-KEEP_ALIVE_INTERVAL = 24 * 60 * 60  # 24 hours in seconds
+KEEP_ALIVE_DB_INTERVAL = 24 * 60 * 60  # 24 hours
+KEEP_ALIVE_SELF_INTERVAL = 10 * 60  # 10 minutes
 
 
-async def _keep_alive_loop():
+async def _keep_alive_db_loop():
     """Ping the DB every 24 hours to prevent Supabase from pausing the project."""
     from src.infrastructure.database.session import AsyncSessionLocal
     from sqlalchemy import text
 
     while True:
-        await asyncio.sleep(KEEP_ALIVE_INTERVAL)
+        await asyncio.sleep(KEEP_ALIVE_DB_INTERVAL)
         try:
             async with AsyncSessionLocal() as session:
                 await session.execute(text("INSERT INTO keep_alive DEFAULT VALUES"))
                 await session.commit()
-            logger.info("Keep-alive ping sent to database.")
+            logger.info("Keep-alive DB ping sent.")
         except Exception as e:
-            logger.warning(f"Keep-alive ping failed: {e}")
+            logger.warning(f"Keep-alive DB ping failed: {e}")
+
+
+async def _keep_alive_self_loop():
+    """Ping own health endpoint every 10 minutes to prevent the app from sleeping."""
+    import httpx
+
+    url = f"http://localhost:{settings.port}/health"
+    async with httpx.AsyncClient() as client:
+        while True:
+            await asyncio.sleep(KEEP_ALIVE_SELF_INTERVAL)
+            try:
+                resp = await client.get(url, timeout=10)
+                logger.info(f"Self-ping: {resp.status_code}")
+            except Exception as e:
+                logger.warning(f"Self-ping failed: {e}")
 
 
 @asynccontextmanager
@@ -186,10 +202,12 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
     print(f"Starting {settings.app_name} API...")
-    keep_alive_task = asyncio.create_task(_keep_alive_loop())
+    db_task = asyncio.create_task(_keep_alive_db_loop())
+    self_task = asyncio.create_task(_keep_alive_self_loop())
     yield
     # Shutdown
-    keep_alive_task.cancel()
+    db_task.cancel()
+    self_task.cancel()
     print(f"Shutting down {settings.app_name} API...")
 
 
